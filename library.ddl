@@ -50,7 +50,8 @@ CREATE TABLE "Borrowed" (
   "copyId" INTEGER NOT NULL REFERENCES "Copy" ("copyId"),
   "readerId" INTEGER NOT NULL REFERENCES "Reader" ("readerId"),
   "bDatetime" DATETIME NOT NULL,
-  "rDatetime" DATETIME
+  "rDatetime" DATETIME,
+  "fine" TEXT
 );
 
 CREATE INDEX "idx_borrowed__copyid" ON "Borrowed" ("copyId");

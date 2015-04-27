@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from __future__ import print_function
-from datetime import datetime, timedelta
+from datetime import datetime
 from decimal import Decimal
 import os
 import sqlite3
@@ -9,6 +9,7 @@ import sqlite3
 __author__ = 'shunghsiyu'
 date_format = '%Y-%m-%d'
 datetime_format = '%Y-%m-%d %H:%M:%S.%f'
+
 
 class Table(object):
     pass
@@ -53,6 +54,24 @@ class Authors(Table):
             author = Author(conn, row[0], row[1])
 
         return author
+
+    @classmethod
+    def get_all(cls, conn):
+        query = """
+                SELECT *
+                FROM Author
+                """
+
+        try:
+            c = conn.cursor()
+            c.execute(query)
+            rows = c.fetchall()
+        except sqlite3.Error as e:
+            raise e
+
+        authors = [Author(conn, row[0], row[1]) for row in rows]
+
+        return authors
 
 
 class Author(object):
@@ -105,51 +124,39 @@ class Books(Table):
 
         book = None
         if row:
-            book = Book(conn, row[0], row[1], row[2], row[3],
-                        row[4])
+            book = Book.create_from_books(conn, row)
 
         return book
 
     @classmethod
-    def search_title(cls, conn, title):
-        query = """
-                SELECT *
-                FROM Book
-                WHERE title = ?
-                """
-        values = (title,)
-
-        try:
-            c = conn.cursor()
-            c.execute(query, values)
-            rows = c.fetchall()
-        except sqlite3.Error as e:
-            raise e
-
-        book = [Book.create_from_books(conn, row) for row in rows]
-
-        return book
-
-    @classmethod
-    def search_publisher_name(cls, conn, publisher_name):
+    def get_all(cls, conn, book_id=None, title=None, publisher_name=None):
         query = """
                 SELECT *
                 FROM Book B, Publisher P
-                WHERE B.publisherId = P.publisherId
-                  AND P.name = ?
+                  WHERE B.publisherId = P.publisherId
                 """
-        values = (publisher_name,)
+        values = []
+
+        if book_id:
+            query+=' AND bookId = ?'
+            values.append(book_id)
+        if title:
+            query+=' AND title LIKE ?'
+            values.append('%'+title+'%')
+        if publisher_name:
+            query+=' AND P.name LIKE ?'
+            values.append('%'+publisher_name+'%')
 
         try:
             c = conn.cursor()
-            c.execute(query, values)
+            c.execute(query, tuple(values))
             rows = c.fetchall()
         except sqlite3.Error as e:
             raise e
 
-        book = [Book.create_from_books(conn, row) for row in rows]
+        books = [Book.create_from_books(conn, row) for row in rows]
 
-        return book
+        return books
 
 
 class Book(object):
@@ -160,7 +167,7 @@ class Book(object):
         self.book_id = book_id
         self.title = title
         self.isbn = isbn
-        self.pubisher_id = publisher_id
+        self.publisher_id = publisher_id
         if isinstance(publish_date, basestring):
             publish_date = datetime.strptime(publish_date,
                                              date_format)
@@ -211,12 +218,34 @@ class Readers(Table):
             raise e
 
         if row:
-            reader = Reader(conn, row[0], row[1], row[2], row[3])
+            reader = Reader.create_from_readers(conn, row)
 
         return reader
 
+    @classmethod
+    def get_all(cls, conn):
+        query = """
+                SELECT *
+                FROM Reader
+                """
+        try:
+            c = conn.cursor()
+            c.execute(query)
+            rows = c.fetchall()
+        except sqlite3.Error as e:
+            raise e
+
+        readers = [Reader.create_from_readers(conn, row)
+                   for row in rows]
+
+        return readers
+
 
 class Reader(object):
+
+    @classmethod
+    def create_from_readers(cls, conn, row):
+        return Reader(conn, row[0], row[1], row[2], row[3])
 
     def __init__(self, conn, reader_id, name, address, phone):
         self.conn = conn
@@ -229,13 +258,13 @@ class Reader(object):
         return Reserves.add(self.conn, copy, self)
 
     def cancel(self, copy):
-        Reserves.cancel(self.conn, copy, self)
+        return Reserves.cancel(self.conn, copy, self)
 
     def checkout(self, copy):
         return Borrows.add(self.conn, copy, self)
 
     def retrn(self, copy):
-        Borrows.retrn(self.conn, copy, self)
+        return Borrows.retrn(self.conn, copy, self)
 
     def get_borrows(self):
         return Borrows.get_all_borrowed_by(self.conn, self)
@@ -311,6 +340,29 @@ class Copies(Table):
 
         return copy
 
+    @classmethod
+    def get_all(cls, conn):
+        query = """
+                SELECT *
+                FROM Copy
+                """
+
+        try:
+            c = conn.cursor()
+            c.execute(query)
+            rows = c.fetchall()
+        except sqlite3.Error as e:
+            raise e
+
+        copies = [Copy.create_from_copies(conn, row)
+                  for row in rows]
+
+        return copies
+
+
+class CopyNotAvailableError(Exception):
+    pass
+
 
 class Copy(object):
     def __init__(self, conn, copy_id, number, book_id, lib_id):
@@ -324,10 +376,16 @@ class Copy(object):
     def create_from_copies(cls, conn, row):
         return cls(conn, row[0], row[1], row[2], row[3])
 
-    def is_borrowed(self):
-        return Borrows.get_borrower(self.conn, self)
+    def get_book(self):
+        return Books.get(self.conn, self.book_id)
 
-    def is_reserved(self):
+    def get_branch(self):
+        return Branches.get(self.conn, self.lib_id)
+
+    def borrower(self):
+        return Borrows.get_active_borrower(self.conn, self)
+
+    def reserver(self):
         return Reserves.get_active_reserver(self.conn, self)
 
 
@@ -336,27 +394,74 @@ class Borrows(Table):
 
     @classmethod
     def add(cls, conn, copy, reader):
-        reserve_by = copy.is_reserved()
-        if not reserve_by or reserve_by.reader_id == reader.reader_id:
-            pass
-        elif copy.is_borrowed() or copy.is_reserved():
-            raise RuntimeError('Cannot borrow book')
-
         insert = """
-                INSERT INTO Borrowed (copyId, readerId, bDatetime, rDatetime)
-                VALUES (?, ?, ?, NULL);
-                """
+                 INSERT INTO
+                   Borrowed (copyId, readerId, bDatetime, rDatetime)
+                 VALUES (?, ?, ?, NULL);
+                 """
+
         now = datetime.utcnow()
-        values = (copy.copy_id, reader.reader_id, now)
-        try:
-            with conn:
+
+        with conn:
+            reserve_by = copy.reserver()
+            if copy.borrower():
+                raise CopyNotAvailableError
+            elif not reserve_by or reserve_by.reader_id == reader.reader_id:
+                pass
+            elif copy.reserver():
+                raise CopyNotAvailableError
+
+            values = (copy.copy_id, reader.reader_id, now)
+            try:
                 c = conn.cursor()
                 c.execute(insert, values)
                 borrow_id = c.lastrowid
+                if reserve_by and reserve_by.reader_id == reader.reader_id:
+                    reader.cancel(copy)
+            except sqlite3.Error as e:
+                raise e
+            return Borrow(conn, borrow_id, copy.copy_id, reader.reader_id, now)
+
+    @classmethod
+    def get(cls, conn, borrow_id):
+        query = """
+                SELECT *
+                FROM Borrowed
+                WHERE borrowId = ?
+                """
+        values = (borrow_id,)
+
+        try:
+            c = conn.cursor()
+            c.execute(query, values)
+            row = c.fetchone()
         except sqlite3.Error as e:
             raise e
 
-        return Borrow(conn, borrow_id, copy.copy_id, reader.reader_id, now)
+        borrow = None
+        if row:
+            borrow = Borrow.create_from_borrowed(conn, row)
+
+        return borrow
+
+    @classmethod
+    def get_all(cls, conn):
+        query = """
+                SELECT *
+                FROM Borrowed
+                """
+
+        try:
+            c = conn.cursor()
+            c.execute(query)
+            rows = c.fetchall()
+        except sqlite3.Error as e:
+            raise e
+
+        borrows = [Borrow.create_from_borrowed(conn, row)
+                   for row in rows]
+
+        return borrows
 
     @classmethod
     def get_all_borrowed_by(cls, conn, reader):
@@ -380,7 +485,7 @@ class Borrows(Table):
         return all_borrows
 
     @classmethod
-    def get_borrower(cls, conn, copy):
+    def get_active_borrower(cls, conn, copy):
         c = conn.cursor()
         query = """
                 SELECT readerID
@@ -388,6 +493,7 @@ class Borrows(Table):
                 WHERE B.copyId = C.copyId
                   AND bookId = ?
                   AND rDatetime IS NULL
+                  AND fine IS NULL
                 """
         try:
             c.execute(query, (copy.book_id,))
@@ -403,29 +509,59 @@ class Borrows(Table):
 
     @classmethod
     def retrn(cls, conn, copy, reader):
-        borrower = copy.is_borrowed()
-        if not borrower or borrower.reader_id != reader.reader_id:
-            raise RuntimeError('Cannot return book')
+        query = """
+                SELECT *
+                FROM Borrowed
+                WHERE copyId = ?
+                  AND readerID = ?
+                  AND rDatetime IS NULL
+                  AND fine IS NULL
+                """
 
         update = """
                  UPDATE Borrowed
-                 SET rDatetime = ?
-                 WHERE copyId = ?
-                   AND readerID = ?
-                   AND rDatetime IS NULL
+                 SET rDatetime = ?, fine = ?
+                 WHERE borrowId = ?
                  """
-        values = (datetime.utcnow(), copy.copy_id, reader.reader_id)
+
+        now = datetime.utcnow()
 
         try:
             with conn:
-                conn.execute(update, values)
+                c = conn.cursor()
+                q_values = (copy.copy_id, reader.reader_id)
+                c.execute(query, q_values)
+                row = c.fetchone()
+                if row is None:
+                    raise CannotReturnCopyError
+                borrow = Borrows.get(conn, row[0])
+                u_values = (now, cls._calculate_fine(borrow, now),
+                            borrow.borrow_id)
+                c.execute(update, u_values)
         except sqlite3.Error as e:
             raise e
+
+        return Borrows.get(conn, row[0])
+
+    @classmethod
+    def _calculate_fine(cls, borrow, now):
+        if now is None:
+            raise RuntimeError('cannot calculate fine')
+
+        date_delta = now.date() - borrow.b_datetime.date()
+        day_delta = date_delta.days - Borrows.max_borrow_days
+        days_overdue = day_delta if day_delta >= 0 else 0
+        fine = Decimal('0.2') * days_overdue
+
+        return str(fine)
+
+class CannotReturnCopyError(Exception):
+    pass
 
 
 class Borrow(object):
 
-    def __init__(self, conn, borrow_id, copy_id, reader_id, b_datetime, r_datetime=None):
+    def __init__(self, conn, borrow_id, copy_id, reader_id, b_datetime, r_datetime=None, fine=None):
         self.conn = conn
         self.borrow_id = borrow_id
         self.copy_id = copy_id
@@ -436,30 +572,25 @@ class Borrow(object):
         if isinstance(r_datetime, basestring):
             r_datetime = datetime.strptime(r_datetime, datetime_format)
         self.r_datetime = r_datetime
+        self.fine = Decimal(fine) if fine else None
+
+    def get_copy(self):
+        return Copies.get(self.conn, self.copy_id)
+
+    def get_reader(self):
+        return Readers.get(self.conn, self.reader_id)
 
     @classmethod
     def create_from_borrowed(cls, conn, row):
-        return cls(conn, row[0], row[1], row[2], row[3], row[4])
-
-    def calculate_fine(self):
-        if self.r_datetime is None:
-            return Decimal('NaN')
-
-        date_delta = self.r_datetime.date() - self.b_datetime.date()
-        assert isinstance(date_delta, timedelta)
-        day_delta = date_delta.days - Borrows.max_borrow_days
-        days_overdue = day_delta if day_delta >= 0 else 0
-        fine = Decimal('0.2') * days_overdue
-
-        return fine
+        return cls(conn, row[0], row[1], row[2], row[3], row[4], row[5])
 
 
 class Reserves(Table):
 
     @classmethod
     def add(cls, conn, copy, reader):
-        if copy.is_borrowed() or copy.is_reserved():
-            raise RuntimeError('Cannot reserve book')
+        if copy.borrower() or copy.reserver():
+            raise CopyNotAvailableError
 
         insert = """
                 INSERT INTO
@@ -502,6 +633,25 @@ class Reserves(Table):
         return reserve
 
     @classmethod
+    def get_all(cls, conn):
+        query = """
+                SELECT *
+                FROM Reserved
+                """
+
+        try:
+            c = conn.cursor()
+            c.execute(query)
+            rows = c.fetchall()
+        except sqlite3.Error as e:
+            raise e
+
+        reserves = [Reserve.create_from_reserved(conn, row)
+                    for row in rows]
+
+        return reserves
+
+    @classmethod
     def get_all_reserved_by(cls, conn, reader):
         query = """
                 SELECT *
@@ -517,10 +667,10 @@ class Reserves(Table):
         except sqlite3.Error as e:
             raise e
 
-        all_borrows = [Reserve.create_from_reserved(conn, row)
-                       for row in rows]
+        all_reserves = [Reserve.create_from_reserved(conn, row)
+                        for row in rows]
 
-        return all_borrows
+        return all_reserves
 
     @classmethod
     def get_active_reserver(cls, conn, copy):
@@ -547,24 +697,39 @@ class Reserves(Table):
 
     @classmethod
     def cancel(cls, conn, copy, reader):
-        reserver = copy.is_reserved()
-        if not reserver or reserver.reader_id != reader.reader_id:
-            raise RuntimeError('Cannot cancel reservation')
+        query = """
+                SELECT *
+                FROM Reserved
+                WHERE copyId = ?
+                  AND readerID = ?
+                  AND isReserved = ?
+                """
 
         update = """
                  UPDATE Reserved
                  SET isReserved = ?
-                 WHERE copyId = ?
-                   AND readerID = ?
-                   AND isReserved = ?
+                 WHERE reserveId = ?
                  """
-        values = (False, copy.copy_id, reader.reader_id, True)
 
         try:
             with conn:
-                conn.execute(update, values)
+                c = conn.cursor()
+                q_values = (copy.copy_id, reader.reader_id, True)
+                c.execute(query, q_values)
+                row = c.fetchone()
+                if row is None:
+                    raise CannotCancelReservationError
+                reserve = Reserves.get(conn, row[0])
+                u_values = (False, reserve.reserve_id)
+                c.execute(update, u_values)
         except sqlite3.Error as e:
             raise e
+
+        return Reserves.get(conn, row[0])
+
+
+class CannotCancelReservationError(Exception):
+    pass
 
 
 class Reserve(object):
@@ -580,6 +745,12 @@ class Reserve(object):
                                             datetime_format)
         self.rv_datetime = rv_datetime
         self.is_reserved = is_reserved
+
+    def get_copy(self):
+        return Copies.get(self.conn, self.copy_id)
+
+    def get_reader(self):
+        return Readers.get(self.conn, self.reader_id)
 
     @classmethod
     def create_from_reserved(cls, conn, row):
@@ -627,6 +798,25 @@ class Publishers(Table):
             publisher = Publisher(conn, row[0], row[1], row[2])
 
         return publisher
+
+    @classmethod
+    def get_all(cls, conn):
+        query = """
+                SELECT *
+                FROM Publisher
+                """
+
+        try:
+            c = conn.cursor()
+            c.execute(query)
+            rows = c.fetchall()
+        except sqlite3.Error as e:
+            raise e
+
+        publishers = [Publisher(conn, row[0], row[1], row[2])
+                      for row in rows]
+
+        return publishers
 
 
 class Publisher(object):
@@ -679,6 +869,25 @@ class Branches(Table):
             branch = Branch(conn, row[0], row[1], row[2])
 
         return branch
+
+    @classmethod
+    def get_all(cls, conn):
+        query = """
+                SELECT *
+                FROM Branch
+                """
+
+        try:
+            c = conn.cursor()
+            c.execute(query)
+            rows = c.fetchall()
+        except sqlite3.Error as e:
+            raise e
+
+        branches = [Branch(conn, row[0], row[1], row[2])
+                    for row in rows]
+
+        return branches
 
 
 class Branch(object):

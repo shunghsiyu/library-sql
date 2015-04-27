@@ -121,7 +121,7 @@ class LibrarySQL(unittest.TestCase):
         self.assertIsNotNone(book.book_id)
         self.assertEqual(book.title, title)
         self.assertEqual(book.isbn, isbn)
-        self.assertEqual(book.pubisher_id, publisher_id)
+        self.assertEqual(book.publisher_id, publisher_id)
         self.assertEqual(book.publish_date, publish_date)
 
     def test_add_books_fail(self):
@@ -144,7 +144,7 @@ class LibrarySQL(unittest.TestCase):
         self.assertEqual(book.book_id, book_id)
         self.assertEqual(book.title, title)
         self.assertEqual(book.isbn, isbn)
-        self.assertEqual(book.pubisher_id, publisher_id)
+        self.assertEqual(book.publisher_id, publisher_id)
         self.assertEqual(book.publish_date, publish_date)
 
     def test_add_copies(self):
@@ -192,7 +192,7 @@ class LibrarySQL(unittest.TestCase):
         number = 1
         copy_id = self.add_copy(number, book_id, lib_id)
         copy = Copy(self.conn, copy_id, number, book_id, lib_id)
-        result = copy.is_reserved()
+        result = copy.reserver()
         self.assertFalse(result)
 
     def test_is_borrowed_copy_false(self):
@@ -202,7 +202,7 @@ class LibrarySQL(unittest.TestCase):
         number = 1
         copy_id = self.add_copy(number, book_id, lib_id)
         copy = Copy(self.conn, copy_id, number, book_id, lib_id)
-        result = copy.is_borrowed()
+        result = copy.borrower()
         self.assertFalse(result)
 
     def test_add_borrows(self):
@@ -240,7 +240,7 @@ class LibrarySQL(unittest.TestCase):
         self.assertEqual(reserve.copy_id, copy.copy_id)
         self.assertTrue(start_time < reserve.rv_datetime)
         self.assertTrue(reserve.rv_datetime < datetime.utcnow())
-        self.assertTrue(reserve.is_reserved)
+        self.assertTrue(reserve.reserver)
 
     def test_reserve_get_reserves_reader(self):
         start_time = datetime.utcnow()
@@ -261,7 +261,7 @@ class LibrarySQL(unittest.TestCase):
         self.assertEqual(reserve.copy_id, copy.copy_id)
         self.assertTrue(start_time < reserve.rv_datetime)
         self.assertTrue(reserve.rv_datetime < datetime.utcnow())
-        self.assertTrue(reserve.is_reserved)
+        self.assertTrue(reserve.reserver)
 
     def test_cancel_reader(self):
         reader = Readers.get(self.conn, self.add_reader())
@@ -274,7 +274,7 @@ class LibrarySQL(unittest.TestCase):
         reader.cancel(copy)
         reserve = Reserves.get(self.conn, reserve.reserve_id)
         self.assertIsNotNone(reserve)
-        self.assertFalse(reserve.is_reserved)
+        self.assertFalse(reserve.reserver)
 
     def test_borrow_get_borrows_reader(self):
         start_time = datetime.utcnow()
@@ -293,9 +293,7 @@ class LibrarySQL(unittest.TestCase):
         self.assertTrue(start_time < checkout.b_datetime)
         self.assertTrue(checkout.b_datetime < datetime.utcnow())
         self.assertIsNone(checkout.r_datetime)
-        fine = checkout.calculate_fine()
-        self.assertIsNotNone(fine)
-        self.assertTrue(fine.is_nan())
+        self.assertIsNone(checkout.fine)
 
     def test_retrn_reader(self):
         start_time = datetime.utcnow()
@@ -319,9 +317,8 @@ class LibrarySQL(unittest.TestCase):
         self.assertIsNotNone(checkout.r_datetime)
         self.assertTrue(start_time < checkout.r_datetime)
         self.assertTrue(checkout.r_datetime < datetime.utcnow())
-        fine = checkout.calculate_fine()
-        self.assertIsNotNone(fine)
-        self.assertEqual(fine, Decimal('0'))
+        self.assertIsNotNone(checkout.fine)
+        self.assertEqual(checkout.fine, Decimal('0'))
 
     def test_search_title_books_empty(self):
         publisher_id = self.add_publisher()
@@ -342,7 +339,7 @@ class LibrarySQL(unittest.TestCase):
         self.assertEqual(books[0].book_id, book.book_id)
         self.assertEqual(books[0].title, book.title)
         self.assertEqual(books[0].isbn, book.isbn)
-        self.assertEqual(books[0].pubisher_id, book.pubisher_id)
+        self.assertEqual(books[0].publisher_id, book.publisher_id)
         self.assertEqual(books[0].publish_date, book.publish_date)
 
     def test_search_publisher_name_books_empty(self):
@@ -366,7 +363,7 @@ class LibrarySQL(unittest.TestCase):
         self.assertEqual(books[0].book_id, book.book_id)
         self.assertEqual(books[0].title, book.title)
         self.assertEqual(books[0].isbn, book.isbn)
-        self.assertEqual(books[0].pubisher_id, book.pubisher_id)
+        self.assertEqual(books[0].publisher_id, book.publisher_id)
         self.assertEqual(books[0].publish_date, book.publish_date)
 
     dummy_reader = {'name': 'A Reader',
