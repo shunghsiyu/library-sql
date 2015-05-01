@@ -101,7 +101,7 @@ class Books(Table):
                 c.execute(insert, values)
                 book_id = c.lastrowid
         except sqlite3.Error:
-            raise
+            raise AddBookError
 
         return Book(conn, book_id, title, isbn, publisher_id,
                     publish_date)
@@ -119,8 +119,8 @@ class Books(Table):
             c = conn.cursor()
             c.execute(query, values)
             row = c.fetchone()
-        except sqlite3.Error as e:
-            raise e
+        except sqlite3.Error:
+            raise
 
         book = None
         if row:
@@ -129,7 +129,7 @@ class Books(Table):
         return book
 
     @classmethod
-    def get_all(cls, conn, book_id=None, title=None, publisher_name=None):
+    def get_all(cls, conn, book_id=None, title=None, publisher_name=None, publisher_id=None):
         query = """
                 SELECT *
                 FROM Book B, Publisher P
@@ -138,14 +138,17 @@ class Books(Table):
         values = []
 
         if book_id:
-            query+=' AND bookId = ?'
+            query+= ' AND bookId = ?'
             values.append(book_id)
         if title:
-            query+=' AND title LIKE ?'
+            query+= ' AND title LIKE ?'
             values.append('%'+title+'%')
         if publisher_name:
-            query+=' AND P.name LIKE ?'
+            query+= ' AND P.name LIKE ?'
             values.append('%'+publisher_name+'%')
+        if publisher_id:
+            query+= ' AND B.publisherId = ?'
+            values.append(publisher_id)
 
         try:
             c = conn.cursor()
@@ -158,6 +161,29 @@ class Books(Table):
 
         return books
 
+    @classmethod
+    def get_most_borrowed(cls, conn, limit=None):
+        query = """
+                SELECT *
+                FROM MostBorrowed
+                """
+        values = []
+
+        if limit is not None:
+            query += ' LIMIT ?'
+            values.append(limit)
+
+        try:
+            c = conn.cursor()
+            c.execute(query, tuple(values))
+            rows = c.fetchall()
+        except sqlite3.Error:
+            raise
+
+        result = [dict(book=Books.get(conn, row[0]), times=row[1])
+                  for row in rows]
+
+        return result
 
 class Book(object):
 
@@ -173,9 +199,19 @@ class Book(object):
                                              date_format)
         self.publish_date = publish_date
 
+    def get_publisher(self):
+        publisher = Publishers.get(self.conn, self.publisher_id)
+        if not publisher:
+            raise NoSuchPublisherError
+        return publisher
+
     @classmethod
     def create_from_books(cls, conn, row):
         return Book(conn, row[0], row[1], row[2], row[3], row[4])
+
+
+class AddBookError(Exception):
+    pass
 
 
 class Readers(Table):
@@ -240,6 +276,24 @@ class Readers(Table):
 
         return readers
 
+    @classmethod
+    def average_fine(cls, conn):
+        query = """
+                SELECT *
+                FROM AverageFine
+                """
+
+        try:
+            c = conn.cursor()
+            c.execute(query)
+            rows = c.fetchall()
+        except sqlite3.Error:
+            raise
+
+        result = [dict(reader=Readers.get(conn, row[0]), fine=row[1])
+                  for row in rows]
+
+        return result
 
 class Reader(object):
 
@@ -819,6 +873,10 @@ class Publishers(Table):
         return publishers
 
 
+class NoSuchPublisherError(Exception):
+    pass
+
+
 class Publisher(object):
 
     def __init__(self, conn, publisher_id, name, address):
@@ -827,6 +885,8 @@ class Publisher(object):
         self.name = name
         self.address = address
 
+    def get_books(self):
+        return Books.get_all(self.conn, publisher_id=self.publisher_id)
 
 class Branches(Table):
 
@@ -898,6 +958,30 @@ class Branch(object):
         self.name = name
         self.location = location
 
+    def frequent_borrowers(self, limit=None):
+        query = """
+                SELECT readerId, Times
+                FROM FrequentBorrower
+                WHERE libId = ?
+                """
+        values = [self.lib_id]
+
+        if limit is not None:
+            query += ' LIMIT ?'
+            values.append(limit)
+
+        try:
+            c = self.conn.cursor()
+            c.execute(query, tuple(values))
+            rows = c.fetchall()
+        except sqlite3.Error:
+            raise
+
+        results = [dict(reader=Readers.get(self.conn, row[0]),
+                        times=row[1])
+                   for row in rows]
+
+        return results
 
 def create_tables(conn, create_script):
     c = conn.cursor()
@@ -914,7 +998,7 @@ def start(db_path='library.db', create_script='library.ddl'):
     else:
         conn = sqlite3.connect(db_path)
         create_tables(conn, create_script)
-
+    conn.execute('PRAGMA FOREIGN_KEYS = 1;')
     return conn
 
 

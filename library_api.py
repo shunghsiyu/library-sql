@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from __future__ import print_function, unicode_literals
-from flask import Flask, g, abort
+from flask import Flask, g, abort, send_from_directory, session, redirect, url_for, request, make_response, flash, render_template
 from flask.ext.restful import Resource, Api, fields, marshal, reqparse
+from functools import wraps, update_wrapper
 from library import *
+import sys
 __author__ = 'shunghsiyu'
 
 
@@ -20,6 +22,14 @@ my_errors = {
         'message': 'Reader does not have an active borrow for that copy.',
         'status': 409
     },
+    'AddBookError': {
+        'message': 'There is already a book with the same ISBN in the database or the publisher does not exist',
+        'status': 400
+    },
+    'ValueError': {
+        'message': 'The date format does not match YYYY-MM-DD and cannot be parsed',
+        'status': 400
+    }
 }
 
 
@@ -27,6 +37,29 @@ app = Flask(__name__)
 api = Api(app, errors=my_errors)
 marshall_fields = {}
 
+
+def nocache(view):
+    @wraps(view)
+    def no_cache(*args, **kwargs):
+        response = make_response(view(*args, **kwargs))
+        response.headers['Last-Modified'] = datetime.now()
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '-1'
+        return response
+
+    return update_wrapper(no_cache, view)
+
+
+def reader_login_required(func):
+    @wraps(func)
+    def wrap(*args, **kwargs):
+        if 'reader_id' in session:
+            return func(*args, **kwargs)
+        else:
+            flash('Please Login First')
+            return redirect(url_for('login'))
+    return wrap
 
 def get_db():
     db = getattr(g, '_database', None)
@@ -43,6 +76,7 @@ def close_connection(exception):
 
 
 class LibraryResource(Resource):
+    method_decorators = [reader_login_required]
     model = None
     envelope = None
     resource_fields = None
@@ -81,7 +115,7 @@ marshall_fields['BookUri'] = {
     'title': fields.String,
     'ISBN': fields.String(attribute='isbn'),
     'publisher_id': fields.Integer,
-    'publish_date': fields.DateTime(dt_format='iso8601'),
+    'publish_date': fields.String(attribute=lambda book: book.publish_date.strftime('%Y-%m-%d')),
     'uri': fields.Url('bookresource')
 }
 
@@ -160,8 +194,9 @@ marshall_fields['Book'] = {
     'book_id': fields.Integer,
     'title': fields.String,
     'ISBN': fields.String(attribute='isbn'),
-    'publisher_id': fields.Integer,
-    'publish_date': fields.DateTime(dt_format='iso8601'),
+    'publisher': fields.Nested(marshall_fields['PublisherUri'],
+                               attribute=lambda book: book.get_publisher()),
+    'publish_date': fields.String(attribute=lambda book: book.publish_date.strftime('%Y-%m-%d')),
     'uri': fields.Url('bookresource')
 }
 
@@ -179,17 +214,17 @@ class BookResource(LibraryResource):
         if book_id is not None:
             abort(405)
         parser = reqparse.RequestParser()
-        parser.add_argument('title', type=str)
-        parser.add_argument('ISBN', type=str)
-        parser.add_argument('publisher_id', type=int)
-        parser.add_argument('publish_date', type=str)
+        parser.add_argument('title', type=str, required=True)
+        parser.add_argument('ISBN', type=str, required=True)
+        parser.add_argument('publisher_id', type=int, required=True)
+        parser.add_argument('publish_date', type=str, required=True)
         args = parser.parse_args(strict=True)
+        publish_date = datetime.strptime(args['publish_date'], '%Y-%m-%d')
         with app.app_context():
-            return marshal(self.model.add(get_db(), args['title'],
-                                          args['ISBN'],
-                                          args['publisher_id'],
-                                          args['publish_date']),
-                           self.resource_fields)
+            book = self.model.add(get_db(), args['title'],
+                                  args['ISBN'], args['publisher_id'],
+                                  publish_date)
+            return marshal(book, self.resource_fields), 201
 
     def _get_all(self):
         parser = reqparse.RequestParser()
@@ -224,6 +259,8 @@ marshall_fields['Publisher'] = {
     'publisher_id': fields.Integer,
     'name': fields.String,
     'address': fields.String,
+    'books': fields.Nested(marshall_fields['BookUri'],
+                           attribute=lambda publisher: publisher.get_books()),
     'uri': fields.Url('publisherresource')
 }
 
@@ -393,6 +430,54 @@ class CopyCancelResource(ReaderActionResource):
         return reader.cancel(copy)
 
 
+class MostBorrowedResource(Resource):
+    resource_field = {
+        'book': fields.Nested(marshall_fields['BookUri'],
+                              attribute=lambda t: t['book']),
+        'times': fields.Integer(attribute=lambda t: t['times'])
+    }
+    envelope = 'results'
+
+    def get(self):
+        with app.app_context():
+            return marshal(Books.get_most_borrowed(get_db(), limit=10),
+                           self.resource_field,
+                           envelope=self.envelope)
+
+
+class AverageFineResource(Resource):
+    resource_field = {
+        'reader': fields.Nested(marshall_fields['ReaderUri'],
+                                attribute=lambda t: t['reader']),
+        'fine': fields.Float(attribute=lambda t: t['fine'])
+    }
+    envelope = 'results'
+
+    def get(self):
+        with app.app_context():
+            return marshal(Readers.average_fine(get_db()),
+                           self.resource_field,
+                           envelope=self.envelope)
+
+
+class FrequentBorrowerResource(Resource):
+    resource_field = {
+        'reader': fields.Nested(marshall_fields['ReaderUri'],
+                                attribute=lambda t: t['reader']),
+        'times': fields.Integer(attribute=lambda t: t['times'])
+    }
+    envelope = 'results'
+
+    def get(self, branch_id):
+        with app.app_context():
+            branch = Branches.get(get_db(), branch_id)
+            if branch is None:
+                abort(404)
+            return marshal(branch.frequent_borrowers(limit=10),
+                           self.resource_field,
+                           envelope=self.envelope)
+
+
 api.add_resource(AuthorResource, '/authors/', '/authors/<int:author_id>')
 api.add_resource(BookResource, '/books/', '/books/<int:book_id>')
 api.add_resource(BranchResource, '/branches/', '/branches/<int:lib_id>')
@@ -405,11 +490,67 @@ api.add_resource(CopyCheckoutResource, '/readers/<int:reader_id>/checkout')
 api.add_resource(CopyReturnResource, '/readers/<int:reader_id>/return')
 api.add_resource(CopyReserveResource, '/readers/<int:reader_id>/reserve')
 api.add_resource(CopyCancelResource, '/readers/<int:reader_id>/cancel')
+api.add_resource(MostBorrowedResource, '/books/most_borrowed')
+api.add_resource(AverageFineResource, '/readers/average_fine')
+api.add_resource(FrequentBorrowerResource, '/branches/<int:branch_id>/frequent_borrower')
+
+
+@app.route('/js/<path:path>')
+def js(path):
+    return send_from_directory('js', path)
+
+
+@app.route('/css/<path:path>')
+def css(path):
+    return send_from_directory('css', path)
+
+
+@app.route('/partial/<path:path>')
+def partial(path):
+    return send_from_directory('partial', path)
+
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        reader = None
+        if 'reader_id' in request.form:
+            with app.app_context():
+                reader = Readers.get(get_db(), request.form['reader_id'])
+        if reader:
+            session['reader_id'] = request.form['reader_id']
+            return redirect(url_for('root'))
+        flash('Reader ID does not exist!')
+        return redirect(url_for('login'))
+    elif 'reader_id' in session:
+        return redirect(url_for('root'))
+    else:
+        return render_template('login.html')
+
+
+@app.route('/logout')
+def logout():
+    if 'reader_id' in session:
+        session.pop('reader_id')
+        flash('You have logged out')
+    return redirect(url_for('login'))
+
+
+@app.route('/')
+@nocache
+@reader_login_required
+def root():
+    return app.send_static_file('reader.html')
+
+
+app.secret_key = 'thisisaSECRET'
 
 
 def run(db_path='library.db', debug=False):
     app.config['DB_PATH'] = db_path
     app.run(debug=debug)
 
+
 if __name__ == '__main__':
-    run(debug=False)
+    to_debug = len(sys.argv) > 1
+    run(debug=to_debug)

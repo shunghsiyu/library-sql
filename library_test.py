@@ -240,7 +240,7 @@ class LibrarySQL(unittest.TestCase):
         self.assertEqual(reserve.copy_id, copy.copy_id)
         self.assertTrue(start_time < reserve.rv_datetime)
         self.assertTrue(reserve.rv_datetime < datetime.utcnow())
-        self.assertTrue(reserve.reserver)
+        self.assertIsNotNone(copy.reserver())
 
     def test_reserve_get_reserves_reader(self):
         start_time = datetime.utcnow()
@@ -261,7 +261,7 @@ class LibrarySQL(unittest.TestCase):
         self.assertEqual(reserve.copy_id, copy.copy_id)
         self.assertTrue(start_time < reserve.rv_datetime)
         self.assertTrue(reserve.rv_datetime < datetime.utcnow())
-        self.assertTrue(reserve.reserver)
+        self.assertIsNotNone(copy.reserver())
 
     def test_cancel_reader(self):
         reader = Readers.get(self.conn, self.add_reader())
@@ -274,7 +274,7 @@ class LibrarySQL(unittest.TestCase):
         reader.cancel(copy)
         reserve = Reserves.get(self.conn, reserve.reserve_id)
         self.assertIsNotNone(reserve)
-        self.assertFalse(reserve.reserver)
+        self.assertIsNone(copy.reserver())
 
     def test_borrow_get_borrows_reader(self):
         start_time = datetime.utcnow()
@@ -323,15 +323,15 @@ class LibrarySQL(unittest.TestCase):
     def test_search_title_books_empty(self):
         publisher_id = self.add_publisher()
         self.add_book(publisher_id=publisher_id)
-        books = Books.search_title(self.conn, "A Random Title")
+        books = Books.get_all(self.conn, title="A Random Title")
         self.assertIsNotNone(books)
         self.assertEqual(len(books), 0)
 
     def test_search_title_books_found(self):
         publisher_id = self.add_publisher()
         book_id = self.add_book(publisher_id=publisher_id)
-        books = Books.search_title(self.conn,
-                                   self.dummy_book['title'])
+        books = Books.get_all(self.conn,
+                              title=self.dummy_book['title'])
         book = Books.get(self.conn, book_id)
         self.assertIsNotNone(books)
         self.assertEqual(len(books), 1)
@@ -345,17 +345,15 @@ class LibrarySQL(unittest.TestCase):
     def test_search_publisher_name_books_empty(self):
         publisher_id = self.add_publisher()
         self.add_book(publisher_id=publisher_id)
-        books = Books.search_publisher_name(self.conn,
-                                            "A Random Publisher")
+        books = Books.get_all(self.conn, publisher_name="A Random Publisher")
         self.assertIsNotNone(books)
         self.assertEqual(len(books), 0)
 
     def test_search_publisher_name_books_found(self):
         publisher_id = self.add_publisher()
         book_id = self.add_book(publisher_id=publisher_id)
-        books = Books.\
-            search_publisher_name(self.conn,
-                                  self.dummy_publisher['name'])
+        books = Books.get_all(self.conn,
+                              publisher_name=self.dummy_publisher['name'])
         book = Books.get(self.conn, book_id)
         self.assertIsNotNone(books)
         self.assertEqual(len(books), 1)

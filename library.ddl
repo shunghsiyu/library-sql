@@ -76,4 +76,26 @@ CREATE TABLE "Wrote" (
   PRIMARY KEY ("authorId", "bookId")
 );
 
-CREATE INDEX "idx_wrote__bookid" ON "Wrote" ("bookId")
+CREATE INDEX "idx_wrote__bookid" ON "Wrote" ("bookId");
+
+CREATE VIEW "AverageFine" AS
+  SELECT R.readerId, AVG(B.fine)
+  FROM Reader R, Borrowed B
+  WHERE R.readerId = B.readerId
+  GROUP BY R.readerId;
+
+CREATE VIEW "MostBorrowed" AS
+  SELECT B.bookId, COUNT(*) AS Times
+  FROM Borrowed R, Copy C, Book B
+  WHERE R.copyId = C.copyId
+    AND C.bookId = B.bookId
+  GROUP BY B.bookId
+  ORDER BY Times DESC;
+
+CREATE VIEW "FrequentBorrower" AS
+  SELECT C.libId, R.readerId, COUNT(*) AS Times
+  FROM Borrowed B, Reader R, Copy C
+  WHERE B.readerId = R.readerId
+    AND B.copyId = C.copyId
+  GROUP BY C.libId, R.readerId
+  ORDER BY C.libId, Times;
