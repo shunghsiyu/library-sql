@@ -160,8 +160,6 @@ marshall_fields['PublisherUri'] = {
 marshall_fields['ReaderUri'] = {
     'reader_id': fields.Integer,
     'name': fields.String,
-    'address': fields.String,
-    'phone': fields.String,
     'uri': fields.Url('readerresource')
 }
 
@@ -381,7 +379,7 @@ class CopyResource(LibraryResource):
 
 marshall_fields['Borrow'] = {
     'borrow_id': fields.Integer,
-    'copy': fields.Nested(marshall_fields['CopyUri'],
+    'copy': fields.Nested(marshall_fields['Copy'],
                           attribute=lambda borrow: borrow.get_copy()),
     'reader': fields.Nested(marshall_fields['ReaderUri'],
                             attribute=lambda borrow: borrow.get_reader()),
@@ -404,7 +402,7 @@ class BorrowResource(LibraryResource):
 
 marshall_fields['Reserve'] = {
     'reserve_id': fields.Integer,
-    'copy': fields.Nested(marshall_fields['CopyUri'],
+    'copy': fields.Nested(marshall_fields['Copy'],
                           attribute=lambda reserve: reserve.get_copy()),
     'reader': fields.Nested(marshall_fields['ReaderUri'],
                             attribute=lambda reserve: reserve.get_reader()),
@@ -522,21 +520,21 @@ class FrequentBorrowerResource(Resource):
                            envelope=self.envelope)
 
 
-api.add_resource(AuthorResource, '/authors/', '/authors/<int:author_id>')
-api.add_resource(BookResource, '/books/', '/books/<int:book_id>')
-api.add_resource(BranchResource, '/branches/', '/branches/<int:lib_id>')
-api.add_resource(PublisherResource, '/publishers/', '/publishers/<int:publisher_id>')
-api.add_resource(ReaderResource, '/readers/', '/readers/<int:reader_id>')
-api.add_resource(CopyResource, '/copies/', '/copies/<int:copy_id>')
-api.add_resource(BorrowResource, '/borrows/', '/borrows/<int:borrow_id>')
-api.add_resource(ReserveResource, '/reserves/', '/reserves/<int:reserve_id>')
-api.add_resource(CopyCheckoutResource, '/readers/<int:reader_id>/checkout')
-api.add_resource(CopyReturnResource, '/readers/<int:reader_id>/return')
-api.add_resource(CopyReserveResource, '/readers/<int:reader_id>/reserve')
-api.add_resource(CopyCancelResource, '/readers/<int:reader_id>/cancel')
-api.add_resource(MostBorrowedResource, '/books/most_borrowed')
-api.add_resource(AverageFineResource, '/readers/average_fine')
-api.add_resource(FrequentBorrowerResource, '/branches/<int:branch_id>/frequent_borrower')
+api.add_resource(AuthorResource, '/api/authors/', '/api/authors/<int:author_id>')
+api.add_resource(BookResource, '/api/books/', '/api/books/<int:book_id>')
+api.add_resource(BranchResource, '/api/branches/', '/api/branches/<int:lib_id>')
+api.add_resource(PublisherResource, '/api/publishers/', '/api/publishers/<int:publisher_id>')
+api.add_resource(ReaderResource, '/api/readers/', '/api/readers/<int:reader_id>')
+api.add_resource(CopyResource, '/api/copies/', '/api/copies/<int:copy_id>')
+api.add_resource(BorrowResource, '/api/borrows/', '/api/borrows/<int:borrow_id>')
+api.add_resource(ReserveResource, '/api/reserves/', '/api/reserves/<int:reserve_id>')
+api.add_resource(CopyCheckoutResource, '/api/readers/<int:reader_id>/checkout')
+api.add_resource(CopyReturnResource, '/api/readers/<int:reader_id>/return')
+api.add_resource(CopyReserveResource, '/api/readers/<int:reader_id>/reserve')
+api.add_resource(CopyCancelResource, '/api/readers/<int:reader_id>/cancel')
+api.add_resource(MostBorrowedResource, '/api/books/most_borrowed')
+api.add_resource(AverageFineResource, '/api/readers/average_fine')
+api.add_resource(FrequentBorrowerResource, '/api/branches/<int:branch_id>/frequent_borrower')
 
 
 @app.route('/js/<path:path>')
@@ -580,11 +578,17 @@ def logout():
     return redirect(url_for('login'))
 
 
-@app.route('/')
+@app.route('/reader/')
+@app.route('/reader')
+@app.route('/reader/<path:path>')
 @reader_login_required_html
 @nocache
-def root():
+def reader(path=None):
     return app.send_static_file('reader.html')
+
+@app.route('/')
+def root():
+    return redirect(url_for('reader'))
 
 
 app.secret_key = 'thisisaSECRET'

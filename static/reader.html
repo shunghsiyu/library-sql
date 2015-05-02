@@ -110,7 +110,22 @@
             <li>Name: {{selectedReader.name}}</li>
             <li>Address: {{selectedReader.address}}</li>
             <li>Phone: {{selectedReader.phone}}</li>
-            <li>Reserves: <span ng-repeat="reserve in selectedReaderInfo.reserves">{{reserve.reserve_id}}, </span></li>
+            <li>Reserves:
+                <table>
+                    <tr>
+                        <th>Book Title</th>
+                        <th>Branch Name</th>
+                        <th>Reservation Time</th>
+                        <th>Status</th>
+                    </tr>
+                    <tr ng-repeat="reserve in selectedReaderInfo.reserves track by reserve.reserve_id">
+                        <td>{{ reserve.copy.book.title }}</td>
+                        <td>{{ reserve.copy.branch.name }}</td>
+                        <td>{{ reserve.rv_datetime | amDateFormat:'MM/DD/YY HH:mm A'}}</td>
+                        <td>{{ reserve.is_reserved }}</td>
+                    </tr>
+                </table>
+            </li>
             <li>Borrows: <span ng-repeat="borrow in selectedReaderInfo.borrows">
                 <span am-time-ago="borrow.b_datetime"></span>
                  ~ {{borrow.r_datetime | amDateFormat:'MMM. DD YYYY'}},<br />
