@@ -1,4 +1,6 @@
-var libraryApp = angular.module('libraryApp', []);
+'use strict';
+
+var libraryApp = angular.module('libraryApp', ['angularMoment']);
 
 libraryApp.controller('BranchListCtrl', function($scope, $http) {
     $http.get('/branches/').success(function(data) {
@@ -52,6 +54,8 @@ libraryApp.controller('ReaderListCtrl', function($scope, $http) {
         }
         $http.get('/readers/'+$scope.selectedReader.reader_id).success(function(data){
             $scope.selectedReaderInfo = data
-        })
+        }).error(function(data) {
+            $scope.selectedReaderInfo = {}
+        });
     }
 });
