@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from __future__ import print_function, unicode_literals
-from flask import Flask, g, abort, send_from_directory, session, redirect, url_for, request, make_response, flash, render_template
+from flask import Flask, g, abort, send_from_directory, session, redirect, url_for, request, make_response, flash, render_template, current_app
 from flask.ext.restful import Resource, Api, fields, marshal, reqparse
 from functools import wraps, update_wrapper
 from library import *
@@ -34,7 +34,21 @@ my_errors = {
 
 
 app = Flask(__name__)
-api = Api(app, errors=my_errors)
+
+class MyApi(Api):
+    def __init__(self, *args, **kwargs):
+        super(MyApi, self).__init__(*args, **kwargs)
+
+    def unauthorized(self, response):
+        """ Given a response, change it to ask for credentials """
+
+        realm = current_app.config.get("HTTP_BASIC_AUTH_REALM", "flask-restful")
+        challenge = u"{0} realm=\"{1}\"".format("Newauth", realm)
+
+        response.headers['WWW-Authenticate'] = challenge
+        return response
+
+api = MyApi(app, errors=my_errors)
 marshall_fields = {}
 
 
@@ -51,7 +65,7 @@ def nocache(view):
     return update_wrapper(no_cache, view)
 
 
-def reader_login_required(func):
+def reader_login_required_html(func):
     @wraps(func)
     def wrap(*args, **kwargs):
         if 'reader_id' in session:
@@ -59,6 +73,16 @@ def reader_login_required(func):
         else:
             flash('Please Login First')
             return redirect(url_for('login'))
+    return wrap
+
+
+def reader_login_required_json(func):
+    @wraps(func)
+    def wrap(*args, **kwargs):
+        if 'reader_id' in session:
+            return func(*args, **kwargs)
+        else:
+            return abort(401)
     return wrap
 
 def get_db():
@@ -76,7 +100,7 @@ def close_connection(exception):
 
 
 class LibraryResource(Resource):
-    method_decorators = [reader_login_required]
+    method_decorators = [reader_login_required_json]
     model = None
     envelope = None
     resource_fields = None
@@ -297,6 +321,25 @@ class ReaderResource(LibraryResource):
     def get(self, reader_id=None):
         return self._get(reader_id)
 
+    def _get(self, reader_id):
+        if reader_id is not None:
+            if 'admin' in session:
+                pass
+            elif 'reader_id' in session and int(session['reader_id']) == reader_id:
+                pass
+            else:
+                abort(403)
+            with app.app_context():
+                return marshal(self._get_one(reader_id),
+                               self.resource_fields)
+        else:
+            #if 'admin' not in session:
+            #    abort(403)
+            with app.app_context():
+                return marshal(self._get_all(),
+                               self.uri_fields,
+                               envelope=self.envelope)
+
     def post(self, reader_id=None):
         if reader_id is not None:
             abort(405)
@@ -310,6 +353,7 @@ class ReaderResource(LibraryResource):
                                           args['address'],
                                           args['phone']),
                            self.resource_fields), 201
+
 
 
 marshall_fields['Copy'] = {
@@ -537,8 +581,8 @@ def logout():
 
 
 @app.route('/')
+@reader_login_required_html
 @nocache
-@reader_login_required
 def root():
     return app.send_static_file('reader.html')
 
