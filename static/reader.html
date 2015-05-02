@@ -10,14 +10,9 @@
     <!-- Bootstrap -->
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap-theme.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/angular-ui-select/0.11.2/select.min.css">
     <link rel="stylesheet" href="/css/base.css">
 
-    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
-    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
-    <!--[if lt IE 9]>
-    <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
-    <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
-    <![endif]-->
 </head>
 <body>
     <p>Click <a href="/logout">here</a> to logout</p>
@@ -25,7 +20,7 @@
     <h2>Branches</h2>
     <div ng-controller="BranchListCtrl">
         <ul class="branches">
-            <li ng-repeat="branch in branches">
+            <li ng-repeat="branch in branches track by branch.lib_id">
                 <span>id: {{branch.lib_id}} - {{branch.name}}</span>
                 <p>Location: {{branch.location}}</p>
             </li>
@@ -37,7 +32,7 @@
     <h2>Books</h2>
     <div ng-controller="BookListCtrl">
         <ul class="books">
-            <li ng-repeat="book in books">
+            <li ng-repeat="book in books track by book.book_id">
                 <span>id: {{book.book_id}} - {{book.title}}</span>
                 <p>ISBN: {{book.ISBN}}</p>
             </li>
@@ -68,7 +63,7 @@
                     <th>Publish Date</th>
                     <th>Publisher</th>
                 </tr>
-                <tr ng-repeat="book in books">
+                <tr ng-repeat="book in books track by book.book_id">
                     <td>{{book.book_id}}</td>
                     <td>{{book.title}}</td>
                     <td>{{book.ISBN}}</td>
@@ -104,9 +99,13 @@
 
     <h2>Readers</h2>
     <div ng-controller="ReaderListCtrl">
-        <form>
-            <select ng-options="reader.name for reader in readers" ng-model="selectedReader" ng-change="getSelectedReaderInfo()"></select>
-        </form>
+        <ui-select ng-model="$parent.selectedReader" on-select="getSelectedReaderInfo()" style="width: 300px;">
+            <ui-select-match placeholder="Select or search a reader in the list...">{{ $select.selected.name }}</ui-select-match>
+            <ui-select-choices repeat="reader in readers">
+                <span>{{reader.name}}</span>
+            </ui-select-choices>
+        </ui-select>
+
         <ul>
             <li>Name: {{selectedReader.name}}</li>
             <li>Address: {{selectedReader.address}}</li>
@@ -118,10 +117,12 @@
             </span></li>
         </ul>
     </div>
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.3.15/angular.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.10.2/moment.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/angular-moment/0.10.1/angular-moment.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/angular-ui-bootstrap/0.12.1/ui-bootstrap-tpls.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/angular-ui-select/0.11.2/select.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/angular-ui-router/0.2.14/angular-ui-router.min.js"></script>
     <script src="/js/books.js"></script>
 </body>
 </html>

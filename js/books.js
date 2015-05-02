@@ -1,6 +1,6 @@
 'use strict';
 
-var libraryApp = angular.module('libraryApp', ['angularMoment']);
+var libraryApp = angular.module('libraryApp', ['angularMoment', 'ui.bootstrap', 'ui.select']);
 
 libraryApp.controller('BranchListCtrl', function($scope, $http) {
     $http.get('/branches/').success(function(data) {
@@ -28,7 +28,7 @@ libraryApp.controller('BookSearchCtrl', function($scope, $http) {
 });
 
 libraryApp.controller('BookAddCtrl', function($scope, $http) {
-    $scope.result = null
+    $scope.result = null;
 
     $scope.add = function(book) {
         $http.post('/books/', book).success(function(data) {
@@ -44,9 +44,14 @@ libraryApp.controller('BookAddCtrl', function($scope, $http) {
 libraryApp.controller('ReaderListCtrl', function($scope, $http) {
     $http.get('/readers/').success(function(data) {
         $scope.readers = data.readers;
-    })
+    });
 
-    $scope.selectedReader = {};
+    $scope.selectedReader = undefined;
+    $scope.selectedReaderInfo = undefined;
+
+    $scope.display = function(reader) {
+        $scope.selectedReader = reader
+    };
 
     $scope.getSelectedReaderInfo = function() {
         if (!$scope.selectedReader) {
