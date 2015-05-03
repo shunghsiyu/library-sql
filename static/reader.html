@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html ng-app="libraryApp" lang="en">
+<html ng-app="libraryReaderApp" lang="en">
 <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -15,122 +15,32 @@
 
 </head>
 <body>
-    <p>Click <a href="/logout">here</a> to logout</p>
-
-    <h2>Branches</h2>
-    <div ng-controller="BranchListCtrl">
-        <ul class="branches">
-            <li ng-repeat="branch in branches track by branch.lib_id">
-                <span>id: {{branch.lib_id}} - {{branch.name}}</span>
-                <p>Location: {{branch.location}}</p>
-            </li>
-        </ul>
-    </div>
-
-    <hr />
-
-    <h2>Books</h2>
-    <div ng-controller="BookListCtrl">
-        <ul class="books">
-            <li ng-repeat="book in books track by book.book_id">
-                <span>id: {{book.book_id}} - {{book.title}}</span>
-                <p>ISBN: {{book.ISBN}}</p>
-            </li>
-        </ul>
-    </div>
-
-    <hr />
-
-    <h2>Book Search</h2>
-    <div ng-controller="BookSearchCtrl">
-        <form novalidate>
-            <label for="searchBookId">BookId:</label>
-            <input type="text" id="searchBookId" ng-model="toSearch.book_id" /><br />
-            <label for="searchBookTitle">Title: </label>
-            <input type="text" id="searchBookTitle" ng-model="toSearch.title" /><br />
-            <label for="searchBookPublisherName">Publisher Name: </label>
-            <input type="text" id="searchBookPublisherName" ng-model="toSearch.publisher_name" /><br />
-            <input type="submit" ng-click="retrieve(toSearch)" />
-        </form>
-        <div ng-show="books">
-            <br />
-            <h4>Results: </h4>
-            <table class="books">
-                <tr>
-                    <th>BookId</th>
-                    <th>Title</th>
-                    <th>ISBN</th>
-                    <th>Publish Date</th>
-                    <th>Publisher</th>
-                </tr>
-                <tr ng-repeat="book in books track by book.book_id">
-                    <td>{{book.book_id}}</td>
-                    <td>{{book.title}}</td>
-                    <td>{{book.ISBN}}</td>
-                    <td>{{book.publish_date}}</td>
-                    <td>{{book.publisher_id}}</td>
-                </tr>
-            </table>
+    <nav class="navbar navbar-default" role="navigation">
+        <div class="navbar-header">
+            <a class="navbar-brand" ui-sref="#">Library</a>
         </div>
-    </div>
-
-    <hr />
-
-    <h2>Book Add</h2>
-    <div ng-controller="BookAddCtrl">
-        <form novalidate>
-            <label for="addBookTitle">Title: </label>
-            <input type="text" id="addBookTitle" ng-model="toAdd.title" /><br />
-            <label for="addBookISBN">ISBN: </label>
-            <input type="text" id="addBookISBN" ng-model="toAdd.ISBN" /><br />
-            <label for="addBookPublisherId">PublisherId: </label>
-            <input type="text" id="addBookPublisherId" ng-model="toAdd.publisher_id" /><br />
-            <label for="addBookPublishDate">Publish Date: </label>
-            <input type="text" id="addBookPublishDate" ng-model="toAdd.publish_date" placeholder="YYYY-MM-DD"/><br />
-            <input type="submit" ng-click="add(toAdd)" />
-        </form>
-
-        <div ng-show="result">
-            <span>{{result}}</span>
-        </div>
-    </div>
-
-    <hr />
-
-    <h2>Readers</h2>
-    <div ng-controller="ReaderListCtrl">
-        <ui-select ng-model="$parent.selectedReader" on-select="getSelectedReaderInfo()" style="width: 300px;">
-            <ui-select-match placeholder="Select or search a reader in the list...">{{ $select.selected.name }}</ui-select-match>
-            <ui-select-choices repeat="reader in readers">
-                <span>{{reader.name}}</span>
-            </ui-select-choices>
-        </ui-select>
-
-        <ul>
-            <li>Name: {{selectedReader.name}}</li>
-            <li>Address: {{selectedReader.address}}</li>
-            <li>Phone: {{selectedReader.phone}}</li>
-            <li>Reserves:
-                <table>
-                    <tr>
-                        <th>Book Title</th>
-                        <th>Branch Name</th>
-                        <th>Reservation Time</th>
-                        <th>Status</th>
-                    </tr>
-                    <tr ng-repeat="reserve in selectedReaderInfo.reserves track by reserve.reserve_id">
-                        <td>{{ reserve.copy.book.title }}</td>
-                        <td>{{ reserve.copy.branch.name }}</td>
-                        <td>{{ reserve.rv_datetime | amDateFormat:'MM/DD/YY HH:mm A'}}</td>
-                        <td>{{ reserve.is_reserved }}</td>
-                    </tr>
-                </table>
-            </li>
-            <li>Borrows: <span ng-repeat="borrow in selectedReaderInfo.borrows">
-                <span am-time-ago="borrow.b_datetime"></span>
-                 ~ {{borrow.r_datetime | amDateFormat:'MMM. DD YYYY'}},<br />
-            </span></li>
+        <ul class="nav navbar-nav">
+            <li><a href="/">Home</a></li>
+            <li><a href>About</a></li>
         </ul>
+    </nav>
+
+    <div class="row">
+        <div class="col-md-3">
+            <ul class="nav nav-pills nav-stacked">
+              <li role="navigation" ui-sref-active="active"><a ui-sref="home">Home</a></li>
+              <li role="navigation" ui-sref-active="active"><a ui-sref="search">Search</a></li>
+              <li role="navigation" ui-sref-active="active"><a ui-sref="reserves">Reservation</a></li>
+              <li role="navigation" ui-sref-active="active"><a ui-sref="borrows">Borrows</a></li>
+              <li role="navigation" ui-sref-active="active"><a href="/logout">Logout</a></li>
+            </ul>
+        </div>
+
+        <div ng-controller="ReaderCtrl" class="col-md-9">
+
+            <div ui-view></div>
+
+        </div>
     </div>
     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.3.15/angular.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.10.2/moment.min.js"></script>

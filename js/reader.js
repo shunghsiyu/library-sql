@@ -1,66 +1,58 @@
 'use strict';
 
-var libraryApp = angular.module('libraryApp', ['angularMoment', 'ui.bootstrap', 'ui.select']);
+var libraryReaderApp = angular.module('libraryReaderApp', ['angularMoment', 'ui.router', 'ui.bootstrap', 'ui.select']);
 
-libraryApp.controller('BranchListCtrl', function($scope, $http) {
-    $http.get('/api/branches/').success(function(data) {
-        $scope.branches = data.branches;
-    })
-});
-
-libraryApp.controller('BookListCtrl', function($scope, $http) {
-    $http.get('/api/books/').success(function(data) {
-        $scope.books = data.books;
-    })
-});
-
-libraryApp.controller('BookSearchCtrl', function($scope, $http) {
-    $scope.books = null;
-
-    $scope.retrieve = function(book) {
-        $http({
-            url: '/api/books/',
-            params: book
-        }).success(function(data) {
-            $scope.books = data.books;
-        });
-    }
-});
-
-libraryApp.controller('BookAddCtrl', function($scope, $http) {
-    $scope.result = null;
-
-    $scope.add = function(book) {
-        $http.post('/api/books/', book).success(function(data) {
-            $scope.books = data.books;
-        }).success(function(data, status) {
-            $scope.result = {status: status, data: data};
-        }).error(function(data, status) {
-            $scope.result = {status: status, message: data.message};
-        });
-    }
-});
-
-libraryApp.controller('ReaderListCtrl', function($scope, $http) {
-    $http.get('/api/readers/').success(function(data) {
-        $scope.readers = data.readers;
+libraryReaderApp.factory('readerIdService', function($http, $q) {
+    var deferred = $q.defer();
+    $http.get('/api/info').success(function(data) {
+        deferred.resolve(data.reader_id)
+    }).error(function(status) {
+        deferred.reject(status)
     });
-
-    $scope.selectedReader = undefined;
-    $scope.selectedReaderInfo = undefined;
-
-    $scope.display = function(reader) {
-        $scope.selectedReader = reader
-    };
-
-    $scope.getSelectedReaderInfo = function() {
-        if (!$scope.selectedReader) {
-            return;
-        }
-        $http.get('/api/readers/'+$scope.selectedReader.reader_id).success(function(data){
-            $scope.selectedReaderInfo = data
-        }).error(function(data) {
-            $scope.selectedReaderInfo = {}
-        });
+    return function() {
+        return deferred.promise;
+    }
+}).factory('readerInfoService', function($http, $q, readerIdService) {
+    var deferred = $q.defer();
+    readerIdService().then(function(reader_id) {
+        $http.get('/api/readers/'+reader_id).success(function(data) {
+            deferred.resolve(data)
+        }).error(function(status) {
+            deferred.reject(status)
+        })
+    });
+    return function() {
+        return deferred.promise;
     }
 });
+
+libraryReaderApp.controller('ReaderCtrl', function($scope, readerInfoService) {
+    // None
+}).controller('ReserveCtrl', function($scope, reader, reserveInfoService) {
+    console.log(reserveInfoService())
+});
+
+libraryReaderApp.config(function($stateProvider, $urlRouterProvider) {
+    $urlRouterProvider.otherwise('/home');
+
+    $stateProvider.state('home', {
+        url: '/home',
+        templateUrl: '/partial/home.html'
+    }).state('search', {
+        url: '/search',
+        templateUrl: '/partial/search.html'
+    }).state('reserves', {
+        url: '/reserves',
+        templateUrl: '/partial/reserves.html',
+        controller: 'ReserveCtrl',
+        resolve: {
+            reader: function(readerInfoService) {
+                return readerInfoService();
+            }
+        }
+    }).state('borrows', {
+        url: '/borrows',
+        templateUrl: '/partial/borrows.html'
+    });
+});
+

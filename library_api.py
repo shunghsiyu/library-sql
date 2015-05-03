@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from __future__ import print_function, unicode_literals
-from flask import Flask, g, abort, send_from_directory, session, redirect, url_for, request, make_response, flash, render_template, current_app
+from flask import Flask, g, abort, send_from_directory, session, redirect, url_for, request, make_response, flash, render_template, current_app, jsonify
 from flask.ext.restful import Resource, Api, fields, marshal, reqparse
 from functools import wraps, update_wrapper
 from library import *
@@ -536,6 +536,11 @@ api.add_resource(MostBorrowedResource, '/api/books/most_borrowed')
 api.add_resource(AverageFineResource, '/api/readers/average_fine')
 api.add_resource(FrequentBorrowerResource, '/api/branches/<int:branch_id>/frequent_borrower')
 
+
+@app.route('/api/info')
+@reader_login_required_json
+def info():
+    return jsonify(reader_id=session['reader_id'])
 
 @app.route('/js/<path:path>')
 def js(path):
