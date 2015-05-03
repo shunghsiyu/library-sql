@@ -1,6 +1,30 @@
 <!-- reserve.html -->
 
 <div class="jumbotron text-center">
-    <h1>The Reservation Page</h1>
-    <p>This page demonstrates <span class="text-danger">nested</span> views.</p>    
+    <h1>Reservations</h1>
+</div>
+
+<div class="row">
+    <div class="col-md-2"></div>
+    <div class="col-md-8">
+        <table class="table table-hover">
+            <tr>
+                <th>Reserve ID</th>
+                <th>Book Title</th>
+                <th>Author Name</th>
+                <th>Library Branch</th>
+                <th>Time of Reservation</th>
+                <th>Status</th>
+            </tr>
+            <tr ng-repeat="reserve in reserves">
+                <td>{{ reserve.reserve_id }}</td>
+                <td>{{ reserve.copy.book.title }}</td>
+                <td><ul class="list-unstyled"><li ng-repeat="author in reserve.copy.book.authors">{{ author.name }}</li></ul></td>
+                <td>{{ reserve.copy.branch.name }}</td>
+                <td>{{ reserve.rv_datetime | amDateFormat:'MM/DD/YY HH:mm A'}}</td>
+                <td>{{ reserve.is_reserved | reservationStatus }}</td>
+            </tr>
+        </table>
+    </div>
+    <div class="col-md-2"></div>
 </div>

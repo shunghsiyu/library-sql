@@ -56,6 +56,27 @@ class Authors(Table):
         return author
 
     @classmethod
+    def get_authors_of(cls, conn, book_id):
+        query = """
+                SELECT A.authorId, A.name
+                FROM Author A, Wrote W
+                WHERE A.authorId = W.authorId
+                  AND W.bookId = ?
+                """
+        values = (book_id,)
+
+        try:
+            c = conn.cursor()
+            c.execute(query, values)
+            rows = c.fetchall()
+        except sqlite3.Error as e:
+            raise e
+
+        authors = [Author(conn, row[0], row[1]) for row in rows]
+
+        return authors
+
+    @classmethod
     def get_all(cls, conn):
         query = """
                 SELECT *
@@ -199,10 +220,11 @@ class Book(object):
                                              date_format)
         self.publish_date = publish_date
 
+    def get_authors(self):
+        return Authors.get_authors_of(self.conn, self.book_id)
+
     def get_publisher(self):
         publisher = Publishers.get(self.conn, self.publisher_id)
-        if not publisher:
-            raise NoSuchPublisherError
         return publisher
 
     @classmethod

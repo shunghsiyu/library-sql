@@ -71,8 +71,7 @@ def reader_login_required_html(func):
         if 'reader_id' in session:
             return func(*args, **kwargs)
         else:
-            flash('Please Login First')
-            return redirect(url_for('login'))
+            return redirect(url_for('login_reader'))
     return wrap
 
 
@@ -219,6 +218,7 @@ marshall_fields['Book'] = {
     'publisher': fields.Nested(marshall_fields['PublisherUri'],
                                attribute=lambda book: book.get_publisher()),
     'publish_date': fields.String(attribute=lambda book: book.publish_date.strftime('%Y-%m-%d')),
+    'authors': fields.Nested(marshall_fields['AuthorUri'] ,attribute=lambda book: book.get_authors()),
     'uri': fields.Url('bookresource')
 }
 
@@ -357,9 +357,9 @@ class ReaderResource(LibraryResource):
 marshall_fields['Copy'] = {
     'copy_id': fields.Integer,
     'number': fields.Integer,
-    'book': fields.Nested(marshall_fields['BookUri'],
+    'book': fields.Nested(marshall_fields['Book'],
                           attribute=lambda copy: copy.get_book()),
-    'branch': fields.Nested(marshall_fields['BranchUri'],
+    'branch': fields.Nested(marshall_fields['Branch'],
                             attribute=lambda copy: copy.get_branch()),
     'is_reserved': fields.Boolean(attribute=lambda copy: copy.reserver() is not None),
     'is_borrowed': fields.Boolean(attribute=lambda copy: copy.borrower() is not None),
@@ -557,8 +557,9 @@ def partial(path):
     return send_from_directory('partial', path)
 
 
-@app.route('/login', methods=['GET', 'POST'])
-def login():
+@app.route('/login_reader', methods=['GET', 'POST'])
+@nocache
+def login_reader():
     if request.method == 'POST':
         reader = None
         if 'reader_id' in request.form:
@@ -566,34 +567,42 @@ def login():
                 reader = Readers.get(get_db(), request.form['reader_id'])
         if reader:
             session['reader_id'] = request.form['reader_id']
-            return redirect(url_for('root'))
-        flash('Reader ID does not exist!')
-        return redirect(url_for('login'))
+            return redirect(url_for('reader'))
+        flash('That reader ID does not exist!')
+        return render_template('login_reader.html')
     elif 'reader_id' in session:
-        return redirect(url_for('root'))
+        return redirect(url_for('reader'))
     else:
-        return render_template('login.html')
+        return render_template('login_reader.html')
 
 
 @app.route('/logout')
+@nocache
 def logout():
     if 'reader_id' in session:
         session.pop('reader_id')
-        flash('You have logged out')
-    return redirect(url_for('login'))
+    print(session)
+    return redirect(url_for('index'))
 
 
-@app.route('/reader/')
 @app.route('/reader')
-@app.route('/reader/<path:path>')
 @reader_login_required_html
 @nocache
 def reader(path=None):
     return app.send_static_file('reader.html')
 
+@app.route('/admin')
+def admin():
+    return app.send_static_file('admin.html')
+
+@app.route('/about')
+def about():
+    return app.send_static_file('about.html')
+
 @app.route('/')
-def root():
-    return redirect(url_for('reader'))
+@app.route('/index')
+def index():
+    return app.send_static_file('index.html')
 
 
 app.secret_key = 'thisisaSECRET'
@@ -601,7 +610,10 @@ app.secret_key = 'thisisaSECRET'
 
 def run(db_path='library.db', debug=False):
     app.config['DB_PATH'] = db_path
-    app.run(debug=debug)
+    if debug:
+        app.run(debug=True)
+    else:
+        app.run(host='0.0.0.0', debug=False)
 
 
 if __name__ == '__main__':

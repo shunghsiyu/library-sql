@@ -1,12 +1,11 @@
-body {
-    padding: 25px;
+.nounderline{
+    text-decoration: none !important;
 }
 
-table, th, td {
-    border: 1px solid black;
-    border-collapse: collapse;
+.popover {
+    min-width: 150px;
 }
 
-th, td {
-    padding: 15px;
+span.large-glyphicon {
+    font-size: 250%;
 }
