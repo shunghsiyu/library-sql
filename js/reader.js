@@ -127,7 +127,8 @@ libraryReaderApp.controller('HomeCtrl', function($scope, reader) {
         $scope.isCollapsed = true;
         $scope.data = BooksResource.get($scope.search)
     }
-}).controller('BookDetailCtrl', function($scope, $stateParams, $interval, BookResource) {
+}).controller('BookDetailCtrl', function($scope, $stateParams, $interval, BookResource, readerId) {
+    $scope.readerId = readerId;
     $scope.loadData = function() {
         BookResource.get({book_id: $stateParams.bookId}).$promise.then(function (data) {
             $scope.book = data;
@@ -146,19 +147,14 @@ libraryReaderApp.controller('HomeCtrl', function($scope, reader) {
     });
 }).controller('CopyListCtrl', function($scope, readerIdService, ReaderActionResource) {
     $scope.borrow = function() {
-        readerIdService().then(function(readerId) {
-            ReaderActionResource(readerId).checkout({
-                'copy_id': $scope.copy.copy_id
-            })
+        ReaderActionResource($scope.readerId).checkout({
+            'copy_id': $scope.copy.copy_id
         })
     };
 
     $scope.reserve = function() {
-        console.log($scope.copy);
-        readerIdService().then(function(readerId) {
-            ReaderActionResource(readerId).reserve({
-                'copy_id': $scope.copy.copy_id
-            })
+        ReaderActionResource($scope.readerId).reserve({
+            'copy_id': $scope.copy.copy_id
         })
     };
 });
@@ -203,7 +199,12 @@ libraryReaderApp.config(['$resourceProvider', function($resourceProvider) {
     }).state('bookDetail', {
         url: '/bookDetail/{bookId:int}',
         templateUrl: '/partial/book.html',
-        controller: 'BookDetailCtrl'
+        controller: 'BookDetailCtrl',
+        resolve: {
+            readerId: function(readerIdService) {
+                return readerIdService();
+            }
+        }
     });
 });
 
