@@ -112,7 +112,7 @@ libraryReaderApp.controller('HomeCtrl', function($scope, reader) {
     $scope.reader = reader
 }).controller('ReserveCtrl', function($scope, reserves) {
     $scope.reserves = reserves
-}).controller('ReturnCancelCtrl', function($scope, readerIdService, ReaderActionResource) {
+}).controller('ReserveCancelCtrl', function($scope, readerIdService, ReaderActionResource) {
     $scope.cancel = function() {
         readerIdService().then(function(readerId) {
             ReaderActionResource(readerId).cancel({
