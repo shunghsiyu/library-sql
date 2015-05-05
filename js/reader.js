@@ -134,13 +134,16 @@ libraryReaderApp.controller('HomeCtrl', function($scope, reader) {
         })
     };
 }).controller('BorrowCtrl', function($scope, $interval, borrows, readerId, borrowInfoService) {
-    $scope.borrows = borrows;
+    $scope.update = function(borrows) {
+        $scope.activeBorrow = $filter('filter')(borrows, {r_datetime: null});
+        $scope.returnedBorrow = $filter('filter')(borrows, {r_datetime: '!'+null});
+    };
+    $scope.update(borrows);
     $scope.readerId = readerId;
 
     $scope.loadData = function() {
         borrowInfoService().then(function (borrows) {
-            console.log(borrows)
-            $scope.borrows = borrows;
+            $scope.update(borrows);
         });
     };
 

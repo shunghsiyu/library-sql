@@ -18,7 +18,7 @@
                 <th>Due</th>
                 <th>Action</th>
             </tr>
-            <tr ng-controller="BorrowReturnCtrl" ng-repeat="borrow in borrows | filter:{r_datetime: null} track by borrow.borrow_id">
+            <tr ng-controller="BorrowReturnCtrl" ng-repeat="borrow in activeBorrow">
                 <td>{{ borrow.borrow_id }}</td>
                 <td>{{ borrow.copy.book.title }}</td>
                 <td><ul class="list-unstyled"><li ng-repeat="author in borrow.copy.book.authors">{{ author.name }}</li></ul></td>
@@ -26,6 +26,9 @@
                 <td>{{ borrow.b_datetime | amDateFormat:'MM/DD/YY HH:mm A'}}</td>
                 <td><span am-time-ago="borrow.b_datetime | returnDatetime"></span></td>
                 <td><button type="button" class="btn btn-default" ng-click="retrn()">Return</button></td>
+            </tr>
+            <tr class="no-hover" ng-hide="activeBorrow[0]">
+                <td colspan="7"><h4>Your don't have any active checkout record</h4></td>
             </tr>
             <tr class="no-hover"><th colspan="7"><br><h4>Borrow History</h4></th></tr>
             <tr class="active">
@@ -37,7 +40,7 @@
                 <th>Return Time</th>
                 <th>Fine</th>
             </tr>
-            <tr ng-repeat="borrow in borrows | filter:{r_datetime: '!'+null} track by borrow.borrow_id">
+            <tr ng-repeat="borrow in returnedBorrow">
                 <td>{{ borrow.borrow_id }}</td>
                 <td>{{ borrow.copy.book.title }}</td>
                 <td><ul class="list-unstyled"><li ng-repeat="author in borrow.copy.book.authors">{{ author.name }}</li></ul></td>
@@ -45,6 +48,9 @@
                 <td>{{ borrow.b_datetime | amDateFormat:'MM/DD/YY HH:mm A'}}</td>
                 <td>{{ borrow.r_datetime | amDateFormat:'MM/DD/YY HH:mm A'}}</td>
                 <td>{{ borrow.fine | currency }}</td>
+            </tr>
+            <tr class="no-hover" ng-hide="returnedBorrow[0]">
+                <td colspan="7"><h4>Your don't have any past checkout record</h4></td>
             </tr>
         </table>
     </div>
