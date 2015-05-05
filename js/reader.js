@@ -50,21 +50,18 @@ libraryReaderApp.factory('readerIdService', function($http, $q) {
         return promiseToReturn;
     }
 }).factory('borrowInfoService', function($http, $q, readerInfoService) {
-    var allPromise = [];
-    var promiseToReturn = readerInfoService().then(function(reader) {
-        angular.forEach(reader.borrows, function(borrow) {
-            var promise = $http.get(borrow.uri).then(function(response) {
-                return response.data
-            });
-            allPromise.push(promise)
-        });
-
-        return $q.all(allPromise);
-    })
-
     return function() {
-        return promiseToReturn;
-    }
+        return readerInfoService().then(function(reader) {
+            var allPromise = [];
+            angular.forEach(reader.borrows, function(borrow) {
+                var promise = $http.get(borrow.uri).then(function(response) {
+                    return response.data
+                });
+                allPromise.push(promise);
+            });
+            return $q.all(allPromise);
+        });
+    };
 }).factory('BooksResource', function($resource) {
     return $resource('/api/books/', {}, {
         'get': {method: 'GET'}
@@ -120,9 +117,21 @@ libraryReaderApp.controller('HomeCtrl', function($scope, reader) {
             })
         })
     };
-}).controller('BorrowCtrl', function($scope, borrows, readerId) {
+}).controller('BorrowCtrl', function($scope, $interval, borrows, readerId, borrowInfoService) {
     $scope.borrows = borrows;
-    $scope.readerId = readerId
+    $scope.readerId = readerId;
+
+    $scope.loadData = function() {
+        borrowInfoService().then(function (borrows) {
+            $scope.borrows = borrows;
+        });
+    };
+
+    var autoUpdate = $interval($scope.loadData, 1000);
+
+    $scope.$on('$stateChangeStart', function() {
+        $interval.cancel(autoUpdate)
+    });
 }).controller('BorrowReturnCtrl', function($scope, ReaderActionResource) {
     var max_borrow_days = 20;
     $scope.borrow.retrn_datetime = moment($scope.borrow.b_datetime).add(max_borrow_days, 'days');
