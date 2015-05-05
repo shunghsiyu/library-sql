@@ -22,6 +22,10 @@ span.large-glyphicon {
     vertical-align: middle;
 }
 
+.table tbody>tr.no-hover{
+    background-color: transparent;
+}
+
 div.button-space {
     height: 34px;
 }
