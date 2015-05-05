@@ -15,17 +15,17 @@
                 <th>Author Name</th>
                 <th>Library Branch</th>
                 <th>Borrow Time</th>
-                <th>Days Left</th>
+                <th>Due</th>
                 <th>Action</th>
             </tr>
-            <tr ng-repeat="borrow in borrows | filter:{r_datetime: null} track by borrow.borrow_id">
+            <tr ng-controller="BorrowReturnCtrl" ng-repeat="borrow in borrows | filter:{r_datetime: null} track by borrow.borrow_id">
                 <td>{{ borrow.borrow_id }}</td>
                 <td>{{ borrow.copy.book.title }}</td>
                 <td><ul class="list-unstyled"><li ng-repeat="author in borrow.copy.book.authors">{{ author.name }}</li></ul></td>
                 <td>{{ borrow.copy.branch.name }}</td>
                 <td>{{ borrow.b_datetime | amDateFormat:'MM/DD/YY HH:mm A'}}</td>
-                <td><span am-time-ago="borrow.b_datetime"></span></td>
-                <td><button type="button" class="btn btn-default">Cancel</button></td>
+                <td><span am-time-ago="borrow.retrn_datetime"></span></td>
+                <td><button type="button" class="btn btn-default" ng-click="retrn()">Return</button></td>
             </tr>
             <tr class="no-hover"><th colspan="7"><br><h4>Borrow History</h4></th></tr>
             <tr class="active">

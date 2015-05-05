@@ -120,8 +120,17 @@ libraryReaderApp.controller('HomeCtrl', function($scope, reader) {
             })
         })
     };
-}).controller('BorrowCtrl', function($scope, borrows) {
-    $scope.borrows = borrows
+}).controller('BorrowCtrl', function($scope, borrows, readerId) {
+    $scope.borrows = borrows;
+    $scope.readerId = readerId
+}).controller('BorrowReturnCtrl', function($scope, ReaderActionResource) {
+    var max_borrow_days = 20;
+    $scope.borrow.retrn_datetime = moment($scope.borrow.b_datetime).add(max_borrow_days, 'days');
+    $scope.retrn = function() {
+        ReaderActionResource($scope.readerId).retrn({
+            'copy_id': $scope.borrow.copy.copy_id
+        });
+    };
 }).controller('SearchCtrl', function($scope, BooksResource) {
     $scope.query = function() {
         $scope.isCollapsed = true;
@@ -184,7 +193,7 @@ libraryReaderApp.config(['$resourceProvider', function($resourceProvider) {
         resolve: {
             reserves: function(reserveInfoService) {
                 return reserveInfoService();
-            }
+            },
         },
         controller: 'ReserveCtrl'
     }).state('borrows', {
@@ -193,6 +202,9 @@ libraryReaderApp.config(['$resourceProvider', function($resourceProvider) {
         resolve: {
             borrows: function(borrowInfoService) {
                 return borrowInfoService();
+            },
+            readerId: function(readerIdService) {
+                return readerIdService();
             }
         },
         controller: 'BorrowCtrl'
