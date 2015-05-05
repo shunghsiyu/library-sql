@@ -30,14 +30,13 @@ libraryReaderApp.factory('readerIdService', function($http, $q) {
         return deferred.promise;
     }
 }).factory('readerInfoService', function($http, $q, readerIdService) {
-    var promiseToReturn = readerIdService().then(function(reader_id) {
-        return $http.get('/api/readers/'+reader_id)
-    }).then(function(response) {
-        return response.data
-    });
     return function() {
-        return promiseToReturn;
-    }
+        return readerIdService().then(function(reader_id) {
+            return $http.get('/api/readers/'+reader_id)
+        }).then(function(response) {
+            return response.data
+        });
+    };
 }).factory('reserveInfoService', function($http, $q, readerInfoService) {
     return function() {
         return readerInfoService().then(function(reader) {
@@ -114,8 +113,9 @@ libraryReaderApp.controller('HomeCtrl', function($scope, reader) {
     $scope.reserves = reserves;
 
     $scope.loadData = function() {
-        reserveInfoService().then(function (borrows) {
-            $scope.borrows = borrows;
+        reserveInfoService().then(function (reserves) {
+            console.log(reserves)
+            $scope.reserves = reserves;
         });
     };
 
@@ -136,6 +136,7 @@ libraryReaderApp.controller('HomeCtrl', function($scope, reader) {
 
     $scope.loadData = function() {
         borrowInfoService().then(function (borrows) {
+            console.log(borrows)
             $scope.borrows = borrows;
         });
     };
