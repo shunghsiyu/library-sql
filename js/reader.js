@@ -108,14 +108,17 @@ libraryReaderApp.factory('readerIdService', function($http, $q) {
 
 libraryReaderApp.controller('HomeCtrl', function($scope, reader) {
     $scope.reader = reader
-}).controller('ReserveCtrl', function($scope, $interval, reserves, readerId, reserveInfoService) {
+}).controller('ReserveCtrl', function($scope, $interval, $filter, reserves, readerId, reserveInfoService) {
+    $scope.update = function(reserves) {
+            $scope.activeReserves = $filter('filter')(reserves, {is_reserved: true});
+            $scope.canceledReserves = $filter('filter')(reserves, {is_reserved: false});
+    };
+    $scope.update(reserves);
     $scope.readerId = readerId;
-    $scope.reserves = reserves;
 
     $scope.loadData = function() {
         reserveInfoService().then(function (reserves) {
-            console.log(reserves)
-            $scope.reserves = reserves;
+            $scope.update(reserves);
         });
     };
 

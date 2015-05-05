@@ -17,7 +17,7 @@
                 <th>Status</th>
                 <th>Action</th>
             </tr>
-            <tr ng-controller="ReserveCancelCtrl" ng-repeat="reserve in reserves | filter:{is_reserved: true} track by reserve.reserve_id">
+            <tr ng-controller="ReserveCancelCtrl" ng-repeat="reserve in activeReserves track by reserve.reserve_id">
                 <td>{{ reserve.reserve_id }}</td>
                 <td>{{ reserve.copy.book.title }}</td>
                 <td><ul class="list-unstyled"><li ng-repeat="author in reserve.copy.book.authors">{{ author.name }}</li></ul></td>
@@ -25,6 +25,9 @@
                 <td>{{ reserve.rv_datetime | amDateFormat:'MM/DD/YY HH:mm A'}}</td>
                 <td class="success">{{ reserve.is_reserved | reservationStatus }}</td>
                 <td class="success"><button type="button" ng-click="cancel()" class="btn btn-default">Cancel</button></td>
+            </tr>
+            <tr ng-hide="activeReserves[0]">
+                <td colspan="7"><br><h4>Your don't have any active reservation</h4><br></td>
             </tr>
             <tr><th colspan="6"><h4>Reservation History</h4></th></tr>
             <tr>
@@ -35,13 +38,16 @@
                 <th>Time of Reservation</th>
                 <th>Status</th>
             </tr>
-            <tr ng-repeat="reserve in reserves | filter:{is_reserved: false} track by reserve.reserve_id">
+            <tr ng-repeat="reserve in canceledReserves track by reserve.reserve_id">
                 <td>{{ reserve.reserve_id }}</td>
                 <td>{{ reserve.copy.book.title }}</td>
                 <td><ul class="list-unstyled"><li ng-repeat="author in reserve.copy.book.authors">{{ author.name }}</li></ul></td>
                 <td>{{ reserve.copy.branch.name }}</td>
                 <td>{{ reserve.rv_datetime | amDateFormat:'MM/DD/YY HH:mm A'}}</td>
                 <td>{{ reserve.is_reserved | reservationStatus }}</td>
+            </tr>
+            <tr ng-hide="canceledReserves[0]">
+                <td colspan="6"><br><h4>Your don't have any past reservation</h4><br></td>
             </tr>
         </table>
     </div>
