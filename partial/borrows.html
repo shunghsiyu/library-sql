@@ -24,7 +24,7 @@
                 <td><ul class="list-unstyled"><li ng-repeat="author in borrow.copy.book.authors">{{ author.name }}</li></ul></td>
                 <td>{{ borrow.copy.branch.name }}</td>
                 <td>{{ borrow.b_datetime | amDateFormat:'MM/DD/YY HH:mm A'}}</td>
-                <td><span am-time-ago="borrow.retrn_datetime"></span></td>
+                <td><span am-time-ago="borrow.b_datetime | returnDatetime"></span></td>
                 <td><button type="button" class="btn btn-default" ng-click="retrn()">Return</button></td>
             </tr>
             <tr class="no-hover"><th colspan="7"><br><h4>Borrow History</h4></th></tr>

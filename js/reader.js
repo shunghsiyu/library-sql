@@ -12,6 +12,11 @@ libraryUtilApp.filter('reservationStatus', function () {
     return function(isAvailable) {
         return isAvailable ? '\u2713 Available' : '\u2718 Unavailable';
     }
+}).filter('returnDatetime', function() {
+    return function(bDatetime) {
+        var max_borrow_days = 20;
+        return moment(bDatetime).add(max_borrow_days, 'days')
+    }
 });
 
 libraryReaderApp.factory('readerIdService', function($http, $q) {
@@ -133,8 +138,6 @@ libraryReaderApp.controller('HomeCtrl', function($scope, reader) {
         $interval.cancel(autoUpdate)
     });
 }).controller('BorrowReturnCtrl', function($scope, ReaderActionResource) {
-    var max_borrow_days = 20;
-    $scope.borrow.retrn_datetime = moment($scope.borrow.b_datetime).add(max_borrow_days, 'days');
     $scope.retrn = function() {
         ReaderActionResource($scope.readerId).retrn({
             'copy_id': $scope.borrow.copy.copy_id
