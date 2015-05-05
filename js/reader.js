@@ -39,21 +39,18 @@ libraryReaderApp.factory('readerIdService', function($http, $q) {
         return promiseToReturn;
     }
 }).factory('reserveInfoService', function($http, $q, readerInfoService) {
-    var allPromise = [];
-    var promiseToReturn = readerInfoService().then(function(reader) {
-        angular.forEach(reader.reserves, function(reserve) {
-            var promise = $http.get(reserve.uri).then(function(response) {
-                return response.data
-            });
-            allPromise.push(promise)
-        });
-
-        return $q.all(allPromise);
-    })
-
     return function() {
-        return promiseToReturn;
-    }
+        return readerInfoService().then(function(reader) {
+            var allPromise = [];
+            angular.forEach(reader.reserves, function(reserve) {
+                var promise = $http.get(reserve.uri).then(function(response) {
+                    return response.data
+                });
+                allPromise.push(promise);
+            });
+            return $q.all(allPromise);
+        });
+    };
 }).factory('borrowInfoService', function($http, $q, readerInfoService) {
     return function() {
         return readerInfoService().then(function(reader) {
@@ -112,14 +109,25 @@ libraryReaderApp.factory('readerIdService', function($http, $q) {
 
 libraryReaderApp.controller('HomeCtrl', function($scope, reader) {
     $scope.reader = reader
-}).controller('ReserveCtrl', function($scope, reserves) {
-    $scope.reserves = reserves
+}).controller('ReserveCtrl', function($scope, $interval, reserves, readerId, reserveInfoService) {
+    $scope.readerId = readerId;
+    $scope.reserves = reserves;
+
+    $scope.loadData = function() {
+        reserveInfoService().then(function (borrows) {
+            $scope.borrows = borrows;
+        });
+    };
+
+    var autoUpdate = $interval($scope.loadData, 1000);
+
+    $scope.$on('$stateChangeStart', function() {
+        $interval.cancel(autoUpdate)
+    });
 }).controller('ReserveCancelCtrl', function($scope, readerIdService, ReaderActionResource) {
     $scope.cancel = function() {
-        readerIdService().then(function(readerId) {
-            ReaderActionResource(readerId).cancel({
-                'copy_id': $scope.reserve.copy.copy_id
-            })
+        ReaderActionResource($scope.readerId).cancel({
+            'copy_id': $scope.reserve.copy.copy_id
         })
     };
 }).controller('BorrowCtrl', function($scope, $interval, borrows, readerId, borrowInfoService) {
@@ -206,6 +214,9 @@ libraryReaderApp.config(['$resourceProvider', function($resourceProvider) {
             reserves: function(reserveInfoService) {
                 return reserveInfoService();
             },
+            readerId: function(readerIdService) {
+                return readerIdService();
+            }
         },
         controller: 'ReserveCtrl'
     }).state('borrows', {
