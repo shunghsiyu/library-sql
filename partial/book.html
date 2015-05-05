@@ -1,0 +1,65 @@
+<!-- book.html -->
+
+<div collapse="hasError">
+    <div class="jumbotron text-center">
+        <h1>Book Detail</h1>
+    </div>
+
+    <div>
+        <h1>Book</h1>
+        <hr>
+        <dl class="dl-horizontal reader-info">
+            <dt>Book ID:</dt><dd>{{ book.book_id }}</dd>
+            <dt>Book Title:</dt><dd>{{ book.title }}</dd>
+            <dt>ISBN:</dt><dd>{{ book.ISBN }}</dd>
+            <dt>Publisher:</dt><dd>{{ book.publisher.name }}</dd>
+            <dt>Publish Date:</dt><dd>{{ book.publish_date }}</dd>
+            <dt>Authors:</dt><dd><ul class="list-unstyled"><li ng-repeat="author in book.authors">{{ author.name }}</li></ul></dd>
+        </dl>
+    </div>
+
+    <div>
+        <br />
+    </div>
+
+    <div class="table-responsive">
+        <h1>Copies</h1>
+        <hr>
+        <table class="table table-hover">
+            <tr class="active">
+                <th>Branch</th>
+                <th>Copy Number</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+            <tr ng-repeat="copy in book.copies track by copy.copy_id">
+                <td class="vert-align">{{ copy.branch.name }} ({{ copy.branch.location }})</td>
+                <td class="vert-align">{{ copy.number }}</td>
+                <td class="vert-align" ng-class="{success: copy.is_available, active: !copy.is_available}">
+                    <span ng-class="{'text-success': copy.is_available, 'text-muted': !copy.is_available}">
+                        {{ copy.is_available | copyStatus }}
+                    </span>
+                </td>
+                <td class="vert-align" ng-class="{success: copy.is_available, active: !copy.is_available}">
+                    <div class="btn-group">
+                        <button type="button" ng-class="{'btn-success': copy.is_available, 'btn-default': !copy.is_available, 'disabled': !copy.is_available}" class="btn">
+                            Reserve
+                        </button>
+                        <button type="button" ng-class="{'btn-primary': copy.is_available, 'btn-default': !copy.is_available, 'disabled': !copy.is_available}"  class="btn">
+                            Borrow
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </div>
+</div>
+
+<div ng-init="hasError = false" ng-show="hasError">
+    <div class="text-center">
+        <h1>Error: <small>the book that you have requested cannot be found in our database.</small></h1>
+    </div>
+</div>
+
+<div class="vertical-space"></div>
+<div class="vertical-space"></div>

@@ -9,3 +9,23 @@
 span.large-glyphicon {
     font-size: 250%;
 }
+
+.table td {
+   text-align: center;
+}
+
+.table th {
+   text-align: center;
+}
+
+.table tbody>tr>td.vert-align{
+    vertical-align: middle;
+}
+
+div.button-space {
+    height: 34px;
+}
+
+div.vertical-space {
+    height: 100px;
+}

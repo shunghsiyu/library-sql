@@ -4,7 +4,7 @@
     <h1>Search</h1>
 </div>
 
-<div>
+<div collapse="isCollapsed">
     <form class="form-horizontal">
         <div class="form-group">
             <label for="inputBookId" class="col-sm-2 control-label">Book ID</label>
@@ -15,7 +15,7 @@
         <div class="form-group">
             <label for="inputBookTitle" class="col-sm-2 control-label">Book Title</label>
             <div class="col-sm-10">
-                <input id="inputBookTitle" type="text" class="form-control" ng-model="search.book_title">
+                <input id="inputBookTitle" type="text" class="form-control" ng-model="search.title">
             </div>
         </div>
         <div class="form-group">
@@ -25,9 +25,43 @@
             </div>
         </div>
         <div class="form-group">
-            <div class="col-sm-offset-2 col-sm-10">
-                <button type="submit" class="btn btn-default" ng-click="plog()">Search</button>
+            <div class="col-sm-12">
+                <div class="text-center">
+                    <button type="submit" class="btn btn-default" ng-click="query()">Search</button>
+                </div>
             </div>
         </div>
     </form>
+</div>
+
+<div collapse="!isCollapsed">
+    <form>
+        <div class="form-group text-center">
+            <button type="submit" class="btn btn-default" ng-click="isCollapsed = !isCollapsed">Refine your search</button>
+        </div>
+    </form>
+</div>
+
+<div>
+    <table class="table table-hover" ng-show="data.books">
+        <tr>
+            <th>Book ID</th>
+            <th>Book Title</th>
+            <th>Authors</th>
+            <th>ISBN</th>
+            <th>Publisher</th>
+            <th>Publish Date</th>
+        </tr>
+        <tr ng-repeat="book in data.books track by book.book_id">
+            <td>{{ book.book_id }}</td>
+            <td><a ui-sref="bookDetail({bookId: book.book_id})">{{ book.title }}</a></td>
+            <td><ul class="list-unstyled"><li ng-repeat="author in book.authors">{{ author.name }}</li></ul></td>
+            <td>{{ book.ISBN }}</td>
+            <td>{{ book.publisher.name }}</td>
+            <td>{{ book.publish_date }}</td>
+        </tr>
+        <tr ng-hide="data.books[0]">
+            <td colspan="6"><br><h4>Your search returns no result</h4><br></td>
+        </tr>
+    </table>
 </div>

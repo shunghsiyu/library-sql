@@ -1,12 +1,18 @@
 'use strict';
 
-var libraryReaderApp = angular.module('libraryReaderApp', ['angularMoment', 'ui.router', 'ui.bootstrap', 'ui.select']);
+var libraryReaderApp = angular.module('libraryReaderApp', ['ngResource', 'angularMoment', 'ui.router', 'ui.bootstrap', 'ui.select', 'libraryUtilApp']);
 
-libraryReaderApp.filter('reservationStatus', function () {
+var libraryUtilApp = angular.module('libraryUtilApp', []);
+
+libraryUtilApp.filter('reservationStatus', function () {
     return function(isReserved) {
         return isReserved ? '\u2713 Active' : '\u2718 Canceled';
     }
-})
+}).filter('copyStatus', function () {
+    return function(isAvailable) {
+        return isAvailable ? '\u2713 Available' : '\u2718 Unavailable';
+    }
+});
 
 libraryReaderApp.factory('readerIdService', function($http, $q) {
     var deferred = $q.defer();
@@ -59,6 +65,14 @@ libraryReaderApp.factory('readerIdService', function($http, $q) {
     return function() {
         return promiseToReturn;
     }
+}).factory('BooksResource', function($resource) {
+    return $resource('/api/books/', {}, {
+        'get': {method: 'GET'}
+    })
+}).factory('BookResource', function($resource) {
+    return $resource('/api/books/:book_id', {}, {
+        'get': {method: 'GET'}
+    })
 });
 
 libraryReaderApp.controller('HomeCtrl', function($scope, reader) {
@@ -67,10 +81,34 @@ libraryReaderApp.controller('HomeCtrl', function($scope, reader) {
     $scope.reserves = reserves
 }).controller('BorrowCtrl', function($scope, borrows) {
     $scope.borrows = borrows
-}).controller('SearchCtrl', function($scope) {
+}).controller('SearchCtrl', function($scope, BooksResource) {
+    $scope.query = function() {
+        $scope.isCollapsed = true;
+        $scope.data = BooksResource.get($scope.search)
+    }
+}).controller('BookDetailCtrl', function($scope, $stateParams, $interval, BookResource) {
+    $scope.loadData = function() {
+        BookResource.get({book_id: $stateParams.bookId}).$promise.then(function (data) {
+            $scope.book = data;
+            $scope.hasError = false;
+        }, function (errorResponse) {
+            $scope.hasError = true;
+        })
+    };
+
+    $scope.loadData();
+
+    var autoUpdate = $interval($scope.loadData, 1000);
+
+    $scope.$on('$stateChangeStart', function() {
+        console.log($interval.cancel(autoUpdate))
+    });
 });
 
-libraryReaderApp.config(function($stateProvider, $urlRouterProvider) {
+libraryReaderApp.config(['$resourceProvider', function($resourceProvider) {
+  // Don't strip trailing slashes from calculated URLs
+  $resourceProvider.defaults.stripTrailingSlashes = false;
+}]).config(function($stateProvider, $urlRouterProvider) {
     $urlRouterProvider.otherwise('/home');
 
     $stateProvider.state('home', {
@@ -104,6 +142,10 @@ libraryReaderApp.config(function($stateProvider, $urlRouterProvider) {
             }
         },
         controller: 'BorrowCtrl'
+    }).state('bookDetail', {
+        url: '/bookDetail/{bookId:int}',
+        templateUrl: '/partial/book.html',
+        controller: 'BookDetailCtrl'
     });
 });
 

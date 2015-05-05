@@ -129,7 +129,7 @@ class LibrarySQL(unittest.TestCase):
         isbn = self.dummy_book['ISBN']
         publisher_id = -1
         publish_date = self.dummy_book['publisher_date']
-        with self.assertRaises(sqlite3.Error):
+        with self.assertRaises(AddBookError):
             Books.add(self.conn, title, isbn, publisher_id,
                       publish_date)
 

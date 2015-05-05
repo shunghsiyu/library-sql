@@ -227,13 +227,13 @@ class Book(object):
         publisher = Publishers.get(self.conn, self.publisher_id)
         return publisher
 
+    def get_copies(self):
+        copies = Copies.get_copies_of(self.conn, self.book_id)
+        return copies
+
     @classmethod
     def create_from_books(cls, conn, row):
         return Book(conn, row[0], row[1], row[2], row[3], row[4])
-
-
-class AddBookError(Exception):
-    pass
 
 
 class Readers(Table):
@@ -417,6 +417,27 @@ class Copies(Table):
         return copy
 
     @classmethod
+    def get_copies_of(cls, conn, book_id):
+        query = """
+                SELECT *
+                FROM Copy
+                  WHERE bookId = ?
+                """
+        values = (book_id,)
+
+        try:
+            c = conn.cursor()
+            c.execute(query, values)
+            rows = c.fetchall()
+        except sqlite3.Error as e:
+            raise e
+
+        copies = [Copy.create_from_copies(conn, row)
+                  for row in rows]
+
+        return copies
+
+    @classmethod
     def get_all(cls, conn):
         query = """
                 SELECT *
@@ -434,10 +455,6 @@ class Copies(Table):
                   for row in rows]
 
         return copies
-
-
-class CopyNotAvailableError(Exception):
-    pass
 
 
 class Copy(object):
@@ -467,9 +484,14 @@ class Copy(object):
 
 class Borrows(Table):
     max_borrow_days = 20
+    max_active_borrows = 10
 
     @classmethod
     def add(cls, conn, copy, reader):
+
+        if cls.get_num_active_borrowed_by(conn, reader) > cls.max_active_borrows:
+            raise OverBorrowError
+
         insert = """
                  INSERT INTO
                    Borrowed (copyId, readerId, bDatetime, rDatetime)
@@ -561,18 +583,40 @@ class Borrows(Table):
         return all_borrows
 
     @classmethod
+    def get_num_active_borrowed_by(cls, conn, reader):
+        query = """
+                SELECT COUNT(*)
+                FROM Borrowed
+                WHERE readerID = ?
+                  AND rDatetime = NULL
+                """
+        values = (reader.reader_id,)
+
+        try:
+            c = conn.cursor()
+            c.execute(query, values)
+            row = c.fetchone()
+        except sqlite3.Error:
+            raise
+
+        return row[0]
+
+    @classmethod
     def get_active_borrower(cls, conn, copy):
         c = conn.cursor()
         query = """
                 SELECT readerID
                 FROM Copy C, Borrowed B
                 WHERE B.copyId = C.copyId
+                  AND B.copyId = ?
                   AND bookId = ?
                   AND rDatetime IS NULL
                   AND fine IS NULL
                 """
+        values = (copy.copy_id, copy.book_id,)
+
         try:
-            c.execute(query, (copy.book_id,))
+            c.execute(query, values)
             row = c.fetchone()
         except sqlite3.Error as e:
             raise e
@@ -631,9 +675,6 @@ class Borrows(Table):
 
         return str(fine)
 
-class CannotReturnCopyError(Exception):
-    pass
-
 
 class Borrow(object):
 
@@ -662,9 +703,14 @@ class Borrow(object):
 
 
 class Reserves(Table):
+    max_active_reserves = 10
 
     @classmethod
     def add(cls, conn, copy, reader):
+
+        if cls.get_num_active_reserved_by(conn, reader) > cls.max_active_reserves:
+            raise OverReserveError
+
         if copy.borrower() or copy.reserver():
             raise CopyNotAvailableError
 
@@ -749,6 +795,25 @@ class Reserves(Table):
         return all_reserves
 
     @classmethod
+    def get_num_active_reserved_by(cls, conn, reader):
+        query = """
+                SELECT COUNT(*)
+                FROM Reserved
+                WHERE readerID = ?
+                  AND isReserved = ?
+                """
+        values = (reader.reader_id, True)
+
+        try:
+            c = conn.cursor()
+            c.execute(query, values)
+            row = c.fetchone()
+        except sqlite3.Error as e:
+            raise e
+
+        return row[0]
+
+    @classmethod
     def get_active_reserver(cls, conn, copy):
         c = conn.cursor()
         query = """
@@ -758,7 +823,7 @@ class Reserves(Table):
                   AND bookId = ?
                   AND isReserved = ?
                 """
-        values = (copy.copy_id, True)
+        values = (copy.book_id, True)
         try:
             c.execute(query, values)
             row = c.fetchone()
@@ -1004,6 +1069,27 @@ class Branch(object):
                    for row in rows]
 
         return results
+
+
+class AddBookError(Exception):
+    pass
+
+
+class CopyNotAvailableError(Exception):
+    pass
+
+
+class CannotReturnCopyError(Exception):
+    pass
+
+
+class OverBorrowError(Exception):
+    pass
+
+
+class OverReserveError(Exception):
+    pass
+
 
 def create_tables(conn, create_script):
     c = conn.cursor()

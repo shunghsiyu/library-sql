@@ -29,6 +29,14 @@ my_errors = {
     'ValueError': {
         'message': 'The date format does not match YYYY-MM-DD and cannot be parsed',
         'status': 400
+    },
+    'OverBorrowError': {
+        'message': 'A reader cannot borrow more than 10 books',
+        'status': 409
+    },
+    'OverReserveError': {
+        'message': 'A reader cannot reserve more than 10 books',
+        'status': 409
     }
 }
 
@@ -210,6 +218,34 @@ class AuthorResource(LibraryResource):
             return marshal(self.model.add(get_db(), args['name']),
                            self.resource_fields), 201
 
+marshall_fields['Branch'] = {
+    'lib_id': fields.Integer,
+    'name': fields.String,
+    'location': fields.String,
+    'uri': fields.Url('branchresource')
+}
+
+
+class BranchResource(LibraryResource):
+    model = Branches
+    envelope = 'branches'
+    resource_fields = marshall_fields['Branch']
+    uri_fields = marshall_fields['BranchUri']
+
+    def get(self, lib_id=None):
+        return self._get(lib_id)
+
+
+marshall_fields['CopySimple'] = {
+    'copy_id': fields.Integer,
+    'number': fields.Integer,
+    'branch': fields.Nested(marshall_fields['Branch'],
+                            attribute=lambda copy: copy.get_branch()),
+    'is_reserved': fields.Boolean(attribute=lambda copy: copy.reserver() is not None),
+    'is_borrowed': fields.Boolean(attribute=lambda copy: copy.borrower() is not None),
+    'is_available': fields.Boolean(attribute=lambda copy: not copy.borrower() and not copy.reserver()),
+    'uri': fields.Url('copyresource')
+}
 
 marshall_fields['Book'] = {
     'book_id': fields.Integer,
@@ -218,6 +254,7 @@ marshall_fields['Book'] = {
     'publisher': fields.Nested(marshall_fields['PublisherUri'],
                                attribute=lambda book: book.get_publisher()),
     'publish_date': fields.String(attribute=lambda book: book.publish_date.strftime('%Y-%m-%d')),
+    'copies': fields.Nested(marshall_fields['CopySimple'], attribute=lambda book: book.get_copies()),
     'authors': fields.Nested(marshall_fields['AuthorUri'] ,attribute=lambda book: book.get_authors()),
     'uri': fields.Url('bookresource')
 }
@@ -227,7 +264,7 @@ class BookResource(LibraryResource):
     model = Books
     envelope = 'books'
     resource_fields = marshall_fields['Book']
-    uri_fields = marshall_fields['BookUri']
+    uri_fields = marshall_fields['Book']
 
     def get(self, book_id=None):
         return self._get(book_id)
@@ -258,23 +295,6 @@ class BookResource(LibraryResource):
                                    args['title'],
                                    args['publisher_name'])
         return books
-
-marshall_fields['Branch'] = {
-    'lib_id': fields.Integer,
-    'name': fields.String,
-    'location': fields.String,
-    'uri': fields.Url('branchresource')
-}
-
-
-class BranchResource(LibraryResource):
-    model = Branches
-    envelope = 'branches'
-    resource_fields = marshall_fields['Branch']
-    uri_fields = marshall_fields['BranchUri']
-
-    def get(self, lib_id=None):
-        return self._get(lib_id)
 
 
 marshall_fields['Publisher'] = {
@@ -331,8 +351,6 @@ class ReaderResource(LibraryResource):
                 return marshal(self._get_one(reader_id),
                                self.resource_fields)
         else:
-            #if 'admin' not in session:
-            #    abort(403)
             with app.app_context():
                 return marshal(self._get_all(),
                                self.uri_fields,
@@ -363,6 +381,7 @@ marshall_fields['Copy'] = {
                             attribute=lambda copy: copy.get_branch()),
     'is_reserved': fields.Boolean(attribute=lambda copy: copy.reserver() is not None),
     'is_borrowed': fields.Boolean(attribute=lambda copy: copy.borrower() is not None),
+    'is_available': fields.Boolean(attribute=lambda copy: not copy.borrower() and not copy.reserver()),
     'uri': fields.Url('copyresource')
 }
 
