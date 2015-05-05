@@ -32,7 +32,7 @@
                 <th>Status</th>
                 <th>Actions</th>
             </tr>
-            <tr ng-repeat="copy in book.copies track by copy.copy_id">
+            <tr ng-repeat="copy in book.copies track by copy.copy_id" ng-controller="CopyListCtrl">
                 <td class="vert-align">{{ copy.branch.name }} ({{ copy.branch.location }})</td>
                 <td class="vert-align">{{ copy.number }}</td>
                 <td class="vert-align" ng-class="{success: copy.is_available, active: !copy.is_available}">
@@ -42,10 +42,10 @@
                 </td>
                 <td class="vert-align" ng-class="{success: copy.is_available, active: !copy.is_available}">
                     <div class="btn-group">
-                        <button type="button" ng-class="{'btn-success': copy.is_available, 'btn-default': !copy.is_available, 'disabled': !copy.is_available}" class="btn">
+                        <button type="button" ng-class="{'btn-success': copy.is_available, 'btn-default': !copy.is_available, 'disabled': !copy.is_available}" ng-click="reserve()" class="btn">
                             Reserve
                         </button>
-                        <button type="button" ng-class="{'btn-primary': copy.is_available, 'btn-default': !copy.is_available, 'disabled': !copy.is_available}"  class="btn">
+                        <button type="button" ng-class="{'btn-primary': copy.is_available, 'btn-default': !copy.is_available, 'disabled': !copy.is_available}" ng-click="borrow()" class="btn">
                             Borrow
                         </button>
                     </div>

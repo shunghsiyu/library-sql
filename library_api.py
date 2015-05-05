@@ -92,6 +92,20 @@ def reader_login_required_json(func):
             return abort(401)
     return wrap
 
+def reader_id_same(func):
+    @wraps(func)
+    def wrap(*args, **kwargs):
+        reader_id = kwargs.get('reader_id', None)
+        if reader_id is not None:
+            if 'admin' in session:
+                pass
+            elif 'reader_id' in session and int(session['reader_id']) == reader_id:
+                pass
+            else:
+                abort(403)
+        return func(*args, **kwargs)
+    return wrap
+
 def get_db():
     db = getattr(g, '_database', None)
     if db is None:
@@ -443,6 +457,7 @@ class ReserveResource(LibraryResource):
 
 class ReaderActionResource(Resource):
     resource_field = None
+    method_decorators = [reader_id_same]
 
     def post(self, reader_id):
         with app.app_context():

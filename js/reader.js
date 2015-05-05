@@ -73,6 +73,39 @@ libraryReaderApp.factory('readerIdService', function($http, $q) {
     return $resource('/api/books/:book_id', {}, {
         'get': {method: 'GET'}
     })
+}).factory('ReaderActionResource', function($resource) {
+    return function(readerId) {
+        return $resource('/api/readers/:reader_id/:verb', {}, {
+            checkout: {
+                method: 'POST',
+                params: {
+                    verb: 'checkout',
+                    reader_id: readerId
+                }
+            },
+            retrn: {
+                method: 'POST',
+                params: {
+                    verb: 'return',
+                    reader_id: readerId
+                }
+            },
+            reserve: {
+                method: 'POST',
+                params: {
+                    verb: 'reserve',
+                    reader_id: readerId
+                }
+            },
+            cancel: {
+                method: 'POST',
+                params: {
+                    verb: 'cancel',
+                    reader_id: readerId
+                }
+            }
+        });
+    };
 });
 
 libraryReaderApp.controller('HomeCtrl', function($scope, reader) {
@@ -103,6 +136,24 @@ libraryReaderApp.controller('HomeCtrl', function($scope, reader) {
     $scope.$on('$stateChangeStart', function() {
         console.log($interval.cancel(autoUpdate))
     });
+}).controller('CopyListCtrl', function($scope, readerIdService, ReaderActionResource) {
+    $scope.borrow = function() {
+        console.log($scope.copy);
+        readerIdService().then(function(readerId) {
+            ReaderActionResource(readerId).checkout({
+                'copy_id': $scope.copy.copy_id
+            })
+        })
+    };
+
+    $scope.reserve = function() {
+        console.log($scope.copy);
+        readerIdService().then(function(readerId) {
+            ReaderActionResource(readerId).reserve({
+                'copy_id': $scope.copy.copy_id
+            })
+        })
+    };
 });
 
 libraryReaderApp.config(['$resourceProvider', function($resourceProvider) {
