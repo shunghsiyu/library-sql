@@ -112,6 +112,14 @@ libraryReaderApp.controller('HomeCtrl', function($scope, reader) {
     $scope.reader = reader
 }).controller('ReserveCtrl', function($scope, reserves) {
     $scope.reserves = reserves
+}).controller('ReturnCancelCtrl', function($scope, readerIdService, ReaderActionResource) {
+    $scope.cancel = function() {
+        readerIdService().then(function(readerId) {
+            ReaderActionResource(readerId).cancel({
+                'copy_id': $scope.reserve.copy.copy_id
+            })
+        })
+    };
 }).controller('BorrowCtrl', function($scope, borrows) {
     $scope.borrows = borrows
 }).controller('SearchCtrl', function($scope, BooksResource) {
@@ -134,11 +142,10 @@ libraryReaderApp.controller('HomeCtrl', function($scope, reader) {
     var autoUpdate = $interval($scope.loadData, 1000);
 
     $scope.$on('$stateChangeStart', function() {
-        console.log($interval.cancel(autoUpdate))
+        $interval.cancel(autoUpdate)
     });
 }).controller('CopyListCtrl', function($scope, readerIdService, ReaderActionResource) {
     $scope.borrow = function() {
-        console.log($scope.copy);
         readerIdService().then(function(readerId) {
             ReaderActionResource(readerId).checkout({
                 'copy_id': $scope.copy.copy_id
