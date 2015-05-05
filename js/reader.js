@@ -6,7 +6,7 @@ var libraryUtilApp = angular.module('libraryUtilApp', []);
 
 libraryUtilApp.filter('reservationStatus', function () {
     return function(isReserved) {
-        return isReserved ? '\u2713 Active' : '\u2718 Canceled';
+        return isReserved ? '\u2713 Reserved' : '\u2718 Canceled';
     }
 }).filter('copyStatus', function () {
     return function(isAvailable) {
