@@ -18,7 +18,7 @@ span.large-glyphicon {
    text-align: center;
 }
 
-.table tbody>tr>td.vert-align{
+.table tbody>tr>td{
     vertical-align: middle;
 }
 
