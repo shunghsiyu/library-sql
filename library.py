@@ -608,7 +608,7 @@ class Borrows(Table):
                 SELECT readerID
                 FROM Copy C, Borrowed B
                 WHERE B.copyId = C.copyId
-                  AND B.copyId = ?
+                  AND C.copyId = ?
                   AND bookId = ?
                   AND rDatetime IS NULL
                   AND fine IS NULL
@@ -820,10 +820,11 @@ class Reserves(Table):
                 SELECT readerID
                 FROM Copy C, Reserved R
                 WHERE R.copyId = C.copyId
+                  AND C.copyId = ?
                   AND bookId = ?
                   AND isReserved = ?
                 """
-        values = (copy.book_id, True)
+        values = (copy.copy_id, copy.book_id, True)
         try:
             c.execute(query, values)
             row = c.fetchone()
