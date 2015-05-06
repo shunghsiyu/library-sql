@@ -92,6 +92,7 @@ def reader_login_required_json(func):
             return abort(401)
     return wrap
 
+
 def reader_id_same(func):
     @wraps(func)
     def wrap(*args, **kwargs):
@@ -105,6 +106,28 @@ def reader_id_same(func):
                 abort(403)
         return func(*args, **kwargs)
     return wrap
+
+
+def admin_login_required_html(func):
+    @wraps(func)
+    def wrap(*args, **kwargs):
+        if 'admin' in session:
+            return func(*args, **kwargs)
+        else:
+            return redirect(url_for('login_admin'))
+    return wrap
+
+
+def admin_login_required_json(func):
+    @wraps(func)
+    def wrap(*args, **kwargs):
+        if 'admin' in session:
+            return func(*args, **kwargs)
+        else:
+            return abort(401)
+    return wrap
+
+
 
 def get_db():
     db = getattr(g, '_database', None)
@@ -624,7 +647,35 @@ def reader_logout():
 def reader(path=None):
     return app.send_static_file('reader.html')
 
+
+@app.route('/login_admin', methods=['GET', 'POST'])
+@nocache
+def login_admin():
+    if request.method == 'POST':
+        print(request.form)
+        if 'username' in request.form and 'password' in request.form:
+            print(request.form['username'])
+            if request.form['username'] == 'admin' and request.form['password'] == 'adminadmin':
+                session['admin'] = True
+                return redirect(url_for('admin'))
+        flash('That username/password combination does not exist!')
+        return render_template('login_admin.html')
+    elif 'admin' in session:
+        return redirect(url_for('admin'))
+    else:
+        return render_template('login_admin.html')
+
+
+@app.route('/admin_logout')
+@nocache
+def admin_logout():
+    if 'admin' in session:
+        session.pop('admin')
+    return redirect(url_for('index'))
+
 @app.route('/admin')
+@admin_login_required_html
+@nocache
 def admin():
     return app.send_static_file('admin.html')
 
