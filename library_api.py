@@ -615,7 +615,6 @@ def login_reader():
 def logout():
     if 'reader_id' in session:
         session.pop('reader_id')
-    print(session)
     return redirect(url_for('index'))
 
 
