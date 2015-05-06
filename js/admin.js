@@ -1,6 +1,6 @@
 'use strict';
 
-var libraryAdminApp = angular.module('libraryAdminApp', ['angularMoment', 'ui.router', 'ui.bootstrap', 'ui.select']);
+var libraryAdminApp = angular.module('libraryAdminApp', ['ngResource', 'angularMoment', 'ui.router', 'ui.bootstrap', 'ui.select']);
 
 libraryAdminApp.config(function($stateProvider, $urlRouterProvider) {
     $urlRouterProvider.otherwise('/home');
