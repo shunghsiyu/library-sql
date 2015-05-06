@@ -8,7 +8,8 @@
     <div class="col-md-2"></div>
     <div class="col-md-8">
         <table class="table table-hover">
-            <tr>
+            <tr class="no-hover"><th colspan="7"><h4>Active Reservations</h4></th></tr>
+            <tr class="active">
                 <th>Reserve ID</th>
                 <th>Book Title</th>
                 <th>Author Name</th>
@@ -26,17 +27,17 @@
                 <td class="success">{{ reserve.is_reserved | reservationStatus }}</td>
                 <td class="success"><button type="button" ng-click="cancel()" class="btn btn-default">Cancel</button></td>
             </tr>
-            <tr ng-hide="activeReserves[0]">
-                <td colspan="7"><br><h4>Your don't have any active reservation</h4><br></td>
+            <tr  class="no-hover" ng-hide="activeReserves[0]">
+                <td colspan="7"><h5>Your don't have any active reservation</h5></td>
             </tr>
-            <tr><th colspan="6"><h4>Reservation History</h4></th></tr>
-            <tr>
+            <tr class="no-hover"><th colspan="7"><br><br><h4>Reservation History</h4></th></tr>
+            <tr class="active">
                 <th>Reserve ID</th>
                 <th>Book Title</th>
                 <th>Author Name</th>
                 <th>Library Branch</th>
                 <th>Time of Reservation</th>
-                <th>Status</th>
+                <th colspan="2">Status</th>
             </tr>
             <tr ng-repeat="reserve in canceledReserves track by reserve.reserve_id">
                 <td>{{ reserve.reserve_id }}</td>
@@ -44,10 +45,10 @@
                 <td><ul class="list-unstyled"><li ng-repeat="author in reserve.copy.book.authors">{{ author.name }}</li></ul></td>
                 <td>{{ reserve.copy.branch.name }}</td>
                 <td>{{ reserve.rv_datetime | amDateFormat:'MM/DD/YY HH:mm A'}}</td>
-                <td>{{ reserve.is_reserved | reservationStatus }}</td>
+                <td colspan="2">{{ reserve.is_reserved | reservationStatus }}</td>
             </tr>
-            <tr ng-hide="canceledReserves[0]">
-                <td colspan="6"><br><h4>Your don't have any past reservation</h4><br></td>
+            <tr class="no-hover" ng-hide="canceledReserves[0]">
+                <td colspan="7"><h5>Your don't have any past reservation</h5></td>
             </tr>
         </table>
     </div>

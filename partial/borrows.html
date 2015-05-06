@@ -28,9 +28,9 @@
                 <td><button type="button" class="btn btn-default" ng-click="retrn()">Return</button></td>
             </tr>
             <tr class="no-hover" ng-hide="activeBorrow[0]">
-                <td colspan="7"><h4>Your don't have any active checkout record</h4></td>
+                <td colspan="7"><h5>Your don't have any active checkout record</h5></td>
             </tr>
-            <tr class="no-hover"><th colspan="7"><br><h4>Borrow History</h4></th></tr>
+            <tr class="no-hover"><th colspan="7"><br><br><h4>Borrow History</h4></th></tr>
             <tr class="active">
                 <th>Borrow ID</th>
                 <th>Book Title</th>
@@ -50,7 +50,7 @@
                 <td>{{ borrow.fine | currency }}</td>
             </tr>
             <tr class="no-hover" ng-hide="returnedBorrow[0]">
-                <td colspan="7"><h4>Your don't have any past checkout record</h4></td>
+                <td colspan="7"><h5>Your don't have any past checkout record</h5></td>
             </tr>
         </table>
     </div>
