@@ -133,7 +133,7 @@ libraryReaderApp.controller('HomeCtrl', function($scope, reader) {
             'copy_id': $scope.reserve.copy.copy_id
         })
     };
-}).controller('BorrowCtrl', function($scope, $interval, borrows, readerId, borrowInfoService) {
+}).controller('BorrowCtrl', function($scope, $interval, $filter, borrows, readerId, borrowInfoService) {
     $scope.update = function(borrows) {
         $scope.activeBorrow = $filter('filter')(borrows, {r_datetime: null});
         $scope.returnedBorrow = $filter('filter')(borrows, {r_datetime: '!'+null});
