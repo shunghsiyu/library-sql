@@ -2,12 +2,28 @@
 
 var libraryAdminApp = angular.module('libraryAdminApp', ['ngResource', 'angularMoment', 'ui.router', 'ui.bootstrap', 'ui.select']);
 
+libraryAdminApp.factory('averageFineResource', function($resource) {
+    return $resource('/api/readers/average_fine', {}, {
+        'get': {method: 'GET'}
+    });
+});
+
+libraryAdminApp.controller('libraryInfoCtrl', function($scope, averageFines) {
+    $scope.averageFines = averageFines.results;
+})
+
 libraryAdminApp.config(function($stateProvider, $urlRouterProvider) {
     $urlRouterProvider.otherwise('/home');
 
     $stateProvider.state('home', {
         url: '/home',
-        templateUrl: '/partial/library.html'
+        templateUrl: '/partial/library.html',
+        controller: 'libraryInfoCtrl',
+        resolve: {
+            averageFines: function(averageFineResource) {
+                return averageFineResource.get().$promise;
+            }
+        }
     }).state('branches', {
         url: '/branches',
         templateUrl: '/partial/branches.html'
