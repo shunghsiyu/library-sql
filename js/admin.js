@@ -6,13 +6,24 @@ libraryAdminApp.factory('averageFineResource', function($resource) {
     return $resource('/api/readers/average_fine', {}, {
         'get': {method: 'GET'}
     });
+}).factory('readerResource', function($resource) {
+    return $resource('/api/readers/', {}, {
+        'add': {method: 'POST'}
+    });
 });
 
 libraryAdminApp.controller('libraryInfoCtrl', function($scope, averageFines) {
     $scope.averageFines = averageFines.results;
-})
+}).controller('addReaderCtrl', function($scope, readerResource) {
+    $scope.add = function() {
+        readerResource.add($scope.readerToAdd);
+    }
+});
 
-libraryAdminApp.config(function($stateProvider, $urlRouterProvider) {
+libraryAdminApp.config(['$resourceProvider', function($resourceProvider) {
+  // Don't strip trailing slashes from calculated URLs
+  $resourceProvider.defaults.stripTrailingSlashes = false;
+}]).config(function($stateProvider, $urlRouterProvider) {
     $urlRouterProvider.otherwise('/home');
 
     $stateProvider.state('home', {
@@ -29,7 +40,8 @@ libraryAdminApp.config(function($stateProvider, $urlRouterProvider) {
         templateUrl: '/partial/branches.html'
     }).state('addReader', {
         url: '/addReader',
-        templateUrl: '/partial/add_reader.html'
+        templateUrl: '/partial/add_reader.html',
+        controller: 'addReaderCtrl'
     }).state('addCopy', {
         url: '/addCopy',
         templateUrl: '/partial/add_copy.html'
