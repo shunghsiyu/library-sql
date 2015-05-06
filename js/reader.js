@@ -212,7 +212,7 @@ libraryReaderApp.config(['$resourceProvider', function($resourceProvider) {
         controller: 'HomeCtrl'
     }).state('search', {
         url: '/search',
-        templateUrl: '/partial/search.html',
+        templateUrl: '/partial/search_books.html',
         controller: 'SearchCtrl'
     }).state('reserves', {
         url: '/reserves',
