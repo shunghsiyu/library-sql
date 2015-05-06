@@ -610,9 +610,9 @@ def login_reader():
         return render_template('login_reader.html')
 
 
-@app.route('/logout')
+@app.route('/reader_logout')
 @nocache
-def logout():
+def reader_logout():
     if 'reader_id' in session:
         session.pop('reader_id')
     return redirect(url_for('index'))
