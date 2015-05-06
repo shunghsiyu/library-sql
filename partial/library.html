@@ -12,7 +12,7 @@
         <tr ng-repeat="averageFine in averageFines">
             <td>{{ averageFine.reader.reader_id }}</td>
             <td>{{ averageFine.reader.name }}</td>
-            <td>{{ averageFine.fine }}</td>
+            <td>{{ averageFine.fine | currency }}</td>
         </tr>
     </table>
 </div>
