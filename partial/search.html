@@ -44,7 +44,7 @@
 
 <div>
     <table class="table table-hover" ng-show="data.books">
-        <tr>
+        <tr class="active">
             <th>Book ID</th>
             <th>Book Title</th>
             <th>Authors</th>
@@ -60,7 +60,7 @@
             <td>{{ book.publisher.name }}</td>
             <td>{{ book.publish_date }}</td>
         </tr>
-        <tr ng-hide="data.books[0]">
+        <tr class="no-hover" ng-hide="data.books[0]">
             <td colspan="6"><br><h4>Your search returns no result</h4><br></td>
         </tr>
     </table>
