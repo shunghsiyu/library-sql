@@ -71,7 +71,7 @@
 
     <br>
 
-    <table class="table table-hover">
+    <table class="table table-hover" ng-show="copiesData">
         <tr>
             <th>Book Title</th>
             <th>Branch</th>
@@ -88,6 +88,9 @@
             <td ng-class="{success: isAvailable, active: !isAvailable}" ng-init="isAvailable = (copy | adminCopyAvailable)">
                 <span ng-class="{'text-success': isAvailable, 'text-danger': !isAvailable}">{{ copy | adminCopyStatus }}</span>
             </td>
+        </tr>
+        <tr ng-hide="copiesData.copies[0]">
+            <td colspan="4"><h4>Your search returns no result</h4></td>
         </tr>
     </table>
 </div>
