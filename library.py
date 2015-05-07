@@ -182,29 +182,6 @@ class Books(Table):
 
         return books
 
-    @classmethod
-    def get_most_borrowed(cls, conn, limit=None):
-        query = """
-                SELECT *
-                FROM MostBorrowed
-                """
-        values = []
-
-        if limit is not None:
-            query += ' LIMIT ?'
-            values.append(limit)
-
-        try:
-            c = conn.cursor()
-            c.execute(query, tuple(values))
-            rows = c.fetchall()
-        except sqlite3.Error:
-            raise
-
-        result = [dict(book=Books.get(conn, row[0]), times=row[1])
-                  for row in rows]
-
-        return result
 
 class Book(object):
 
@@ -316,6 +293,7 @@ class Readers(Table):
                   for row in rows]
 
         return result
+
 
 class Reader(object):
 
@@ -588,7 +566,7 @@ class Borrows(Table):
                 SELECT COUNT(*)
                 FROM Borrowed
                 WHERE readerID = ?
-                  AND rDatetime = NULL
+                  AND rDatetime IS NULL
                 """
         values = (reader.reader_id,)
 
@@ -976,6 +954,7 @@ class Publisher(object):
     def get_books(self):
         return Books.get_all(self.conn, publisher_id=self.publisher_id)
 
+
 class Branches(Table):
 
     @classmethod
@@ -1054,7 +1033,7 @@ class Branch(object):
                 """
         values = [self.lib_id]
 
-        if limit is not None:
+        if limit:
             query += ' LIMIT ?'
             values.append(limit)
 
@@ -1070,6 +1049,30 @@ class Branch(object):
                    for row in rows]
 
         return results
+
+    def most_borrowed_books(self, limit=None):
+        query = """
+                SELECT bookId, Times
+                FROM MostBorrowed
+                  WHERE libId = ?
+                """
+        values = [self.lib_id]
+
+        if limit is not None:
+            query += ' LIMIT ?'
+            values.append(limit)
+
+        try:
+            c = self.conn.cursor()
+            c.execute(query, tuple(values))
+            rows = c.fetchall()
+        except sqlite3.Error:
+            raise
+
+        result = [dict(book=Books.get(self.conn, row[0]), times=row[1])
+                  for row in rows]
+
+        return result
 
 
 class AddBookError(Exception):
