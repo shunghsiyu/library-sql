@@ -529,21 +529,6 @@ class CopyCancelResource(ReaderActionResource):
         return reader.cancel(copy)
 
 
-class MostBorrowedResource(Resource):
-    resource_field = {
-        'book': fields.Nested(marshall_fields['BookUri'],
-                              attribute=lambda t: t['book']),
-        'times': fields.Integer(attribute=lambda t: t['times'])
-    }
-    envelope = 'results'
-
-    def get(self):
-        with app.app_context():
-            return marshal(Books.get_most_borrowed(get_db(), limit=10),
-                           self.resource_field,
-                           envelope=self.envelope)
-
-
 class AverageFineResource(Resource):
     resource_field = {
         'reader': fields.Nested(marshall_fields['ReaderUri'],
@@ -577,6 +562,24 @@ class FrequentBorrowerResource(Resource):
                            envelope=self.envelope)
 
 
+class MostBorrowedResource(Resource):
+    resource_field = {
+        'book': fields.Nested(marshall_fields['BookUri'],
+                              attribute=lambda t: t['book']),
+        'times': fields.Integer(attribute=lambda t: t['times'])
+    }
+    envelope = 'results'
+
+    def get(self, branch_id):
+        with app.app_context():
+            branch = Branches.get(get_db(), branch_id)
+            if branch is None:
+                abort(404)
+            return marshal(branch.most_borrowed_books(limit=10),
+                           self.resource_field,
+                           envelope=self.envelope)
+
+
 api.add_resource(AuthorResource, '/api/authors/', '/api/authors/<int:author_id>')
 api.add_resource(BookResource, '/api/books/', '/api/books/<int:book_id>')
 api.add_resource(BranchResource, '/api/branches/', '/api/branches/<int:lib_id>')
@@ -589,9 +592,9 @@ api.add_resource(CopyCheckoutResource, '/api/readers/<int:reader_id>/checkout')
 api.add_resource(CopyReturnResource, '/api/readers/<int:reader_id>/return')
 api.add_resource(CopyReserveResource, '/api/readers/<int:reader_id>/reserve')
 api.add_resource(CopyCancelResource, '/api/readers/<int:reader_id>/cancel')
-api.add_resource(MostBorrowedResource, '/api/books/most_borrowed')
-api.add_resource(AverageFineResource, '/api/readers/average_fine')
 api.add_resource(FrequentBorrowerResource, '/api/branches/<int:branch_id>/frequent_borrower')
+api.add_resource(MostBorrowedResource, '/api/branches/<int:branch_id>/most_borrowed')
+api.add_resource(AverageFineResource, '/api/readers/average_fine')
 
 
 @app.route('/api/info')
