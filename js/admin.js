@@ -54,6 +54,18 @@ libraryAdminApp.controller('libraryInfoCtrl', function($scope, averageFines) {
             lib_id: selected.branch.lib_id
         });
     }
+}).controller('searchCopyCtrl', function($scope, booksData, branchesData, copiesResource) {
+    $scope.books = booksData.books;
+    $scope.books.splice(0, 0, {title:"---", book_id: null});
+    $scope.branches = branchesData.branches;
+    $scope.branches.splice(0, 0, {name:"---", lib_id: null});
+    $scope.search = function() {
+        var toSearch = $scope.toSearch;
+        $scope.copiesData = copiesResource.get({
+            book_id: toSearch.book.book_id,
+            lib_id: toSearch.branch.lib_id
+        })
+    }
 });
 
 libraryAdminApp.config(['$resourceProvider', function($resourceProvider) {
@@ -98,6 +110,15 @@ libraryAdminApp.config(['$resourceProvider', function($resourceProvider) {
         }
     }).state('searchCopies', {
         url: '/searchCopies',
-        templateUrl: '/partial/search_copies.html'
+        templateUrl: '/partial/search_copies.html',
+        controller: 'searchCopyCtrl',
+        resolve: {
+            branchesData: function(branchesResource) {
+                return branchesResource.get().$promise;
+            },
+            booksData: function(booksResource) {
+                return booksResource.get().$promise;
+            }
+        }
     });
 });
