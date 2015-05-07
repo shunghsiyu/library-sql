@@ -43,6 +43,7 @@ my_errors = {
 
 app = Flask(__name__)
 
+
 class MyApi(Api):
     def __init__(self, *args, **kwargs):
         super(MyApi, self).__init__(*args, **kwargs)
@@ -126,7 +127,6 @@ def admin_login_required_json(func):
         else:
             return abort(401)
     return wrap
-
 
 
 def get_db():
@@ -255,10 +255,27 @@ class AuthorResource(LibraryResource):
             return marshal(self.model.add(get_db(), args['name']),
                            self.resource_fields), 201
 
+
+marshall_fields['BranchMostBorrowed'] = {
+    'book': fields.Nested(marshall_fields['BookUri'],
+                          attribute=lambda t: t['book']),
+    'times': fields.Integer(attribute=lambda t: t['times'])
+}
+
+marshall_fields['BranchFrequentBorrower'] = {
+    'reader': fields.Nested(marshall_fields['ReaderUri'],
+                            attribute=lambda t: t['reader']),
+    'times': fields.Integer(attribute=lambda t: t['times'])
+}
+
 marshall_fields['Branch'] = {
     'lib_id': fields.Integer,
     'name': fields.String,
     'location': fields.String,
+    'most_borrowed': fields.Nested(marshall_fields['BranchMostBorrowed'],
+                                   attribute=lambda branch: branch.most_borrowed_books()),
+    'frequent_borrower': fields.Nested(marshall_fields['BranchFrequentBorrower'],
+                                       attribute=lambda branch: branch.frequent_borrowers()),
     'uri': fields.Url('branchresource')
 }
 
@@ -408,7 +425,6 @@ class ReaderResource(LibraryResource):
                            self.resource_fields), 201
 
 
-
 marshall_fields['Copy'] = {
     'copy_id': fields.Integer,
     'number': fields.Integer,
@@ -544,42 +560,6 @@ class AverageFineResource(Resource):
                            envelope=self.envelope)
 
 
-class FrequentBorrowerResource(Resource):
-    resource_field = {
-        'reader': fields.Nested(marshall_fields['ReaderUri'],
-                                attribute=lambda t: t['reader']),
-        'times': fields.Integer(attribute=lambda t: t['times'])
-    }
-    envelope = 'results'
-
-    def get(self, branch_id):
-        with app.app_context():
-            branch = Branches.get(get_db(), branch_id)
-            if branch is None:
-                abort(404)
-            return marshal(branch.frequent_borrowers(limit=10),
-                           self.resource_field,
-                           envelope=self.envelope)
-
-
-class MostBorrowedResource(Resource):
-    resource_field = {
-        'book': fields.Nested(marshall_fields['BookUri'],
-                              attribute=lambda t: t['book']),
-        'times': fields.Integer(attribute=lambda t: t['times'])
-    }
-    envelope = 'results'
-
-    def get(self, branch_id):
-        with app.app_context():
-            branch = Branches.get(get_db(), branch_id)
-            if branch is None:
-                abort(404)
-            return marshal(branch.most_borrowed_books(limit=10),
-                           self.resource_field,
-                           envelope=self.envelope)
-
-
 api.add_resource(AuthorResource, '/api/authors/', '/api/authors/<int:author_id>')
 api.add_resource(BookResource, '/api/books/', '/api/books/<int:book_id>')
 api.add_resource(BranchResource, '/api/branches/', '/api/branches/<int:lib_id>')
@@ -592,8 +572,6 @@ api.add_resource(CopyCheckoutResource, '/api/readers/<int:reader_id>/checkout')
 api.add_resource(CopyReturnResource, '/api/readers/<int:reader_id>/return')
 api.add_resource(CopyReserveResource, '/api/readers/<int:reader_id>/reserve')
 api.add_resource(CopyCancelResource, '/api/readers/<int:reader_id>/cancel')
-api.add_resource(FrequentBorrowerResource, '/api/branches/<int:branch_id>/frequent_borrower')
-api.add_resource(MostBorrowedResource, '/api/branches/<int:branch_id>/most_borrowed')
 api.add_resource(AverageFineResource, '/api/readers/average_fine')
 
 
@@ -601,6 +579,7 @@ api.add_resource(AverageFineResource, '/api/readers/average_fine')
 @reader_login_required_json
 def info():
     return jsonify(reader_id=session['reader_id'])
+
 
 @app.route('/js/<path:path>')
 def js(path):
@@ -647,7 +626,7 @@ def reader_logout():
 @app.route('/reader')
 @reader_login_required_html
 @nocache
-def reader(path=None):
+def reader():
     return app.send_static_file('reader.html')
 
 
@@ -674,15 +653,18 @@ def admin_logout():
         session.pop('admin')
     return redirect(url_for('index'))
 
+
 @app.route('/admin')
 @admin_login_required_html
 @nocache
 def admin():
     return app.send_static_file('admin.html')
 
+
 @app.route('/about')
 def about():
     return app.send_static_file('about.html')
+
 
 @app.route('/')
 @app.route('/index')
