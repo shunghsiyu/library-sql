@@ -85,11 +85,11 @@ CREATE VIEW "AverageFine" AS
   GROUP BY R.readerId;
 
 CREATE VIEW "MostBorrowed" AS
-  SELECT B.bookId, COUNT(*) AS Times
-  FROM Borrowed R, Copy C, Book B
+  SELECT C.libId, B.bookId, COUNT(*) AS Times
+  FROM Book B, Copy C, Borrowed R
   WHERE R.copyId = C.copyId
     AND C.bookId = B.bookId
-  GROUP BY B.bookId
+  GROUP BY C.libId, B.bookId
   ORDER BY Times DESC;
 
 CREATE VIEW "FrequentBorrower" AS
@@ -98,4 +98,4 @@ CREATE VIEW "FrequentBorrower" AS
   WHERE B.readerId = R.readerId
     AND B.copyId = C.copyId
   GROUP BY C.libId, R.readerId
-  ORDER BY C.libId, Times;
+  ORDER BY C.libId, Times DESC;
