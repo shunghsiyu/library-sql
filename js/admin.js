@@ -1,6 +1,6 @@
 'use strict';
 
-var libraryAdminApp = angular.module('libraryAdminApp', ['ngResource', 'angularMoment', 'ui.router', 'ui.bootstrap', 'ui.select']);
+var libraryAdminApp = angular.module('libraryAdminApp', ['libraryUtilApp', 'ngResource', 'angularMoment', 'ui.router', 'ui.bootstrap', 'ui.select']);
 
 libraryAdminApp.factory('averageFineResource', function($resource) {
     return $resource('/api/readers/average_fine', {}, {
@@ -56,14 +56,16 @@ libraryAdminApp.controller('libraryInfoCtrl', function($scope, averageFines) {
     }
 }).controller('searchCopyCtrl', function($scope, booksData, branchesData, copiesResource) {
     $scope.books = booksData.books;
-    $scope.books.splice(0, 0, {title:"---", book_id: null});
+    $scope.books.splice(0, 0, {title:"--- All Books ---", book_id: null});
     $scope.branches = branchesData.branches;
-    $scope.branches.splice(0, 0, {name:"---", lib_id: null});
+    $scope.branches.splice(0, 0, {name:"--- All Branches ---", lib_id: null});
     $scope.search = function() {
         var toSearch = $scope.toSearch;
         $scope.copiesData = copiesResource.get({
             book_id: toSearch.book.book_id,
-            lib_id: toSearch.branch.lib_id
+            lib_id: toSearch.branch.lib_id,
+            number: toSearch.number,
+            availability: toSearch.availability
         })
     }
 });
