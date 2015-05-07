@@ -420,15 +420,65 @@ class Copies(Table):
         return copies
 
     @classmethod
-    def get_all(cls, conn):
+    def get_all(cls, conn, book_id=None, lib_id=None, number=None, available=None):
         query = """
-                SELECT *
-                FROM Copy
+                SELECT C.copyId, C.number, C.bookId, C.libId
+                FROM {}
+                WHERE C.copyId IS NOT NULL
                 """
+        tables = ['Copy C']
+        values = []
+
+        if available is True:
+            query += """  AND NOT EXISTS (SELECT R.copyId
+                                         FROM Reserved R
+                                         WHERE C.copyId = R.copyID
+                                           AND R.isReserved = ?
+
+                                         UNION
+
+                                         SELECT B.copyId
+                                         FROM Borrowed B
+                                         WHERE C.copyId = B.copyId
+                                           AND B.rDatetime IS NULL)
+                     """
+            values.append(True)
+        elif available is False:
+            query += """  AND NOT EXISTS (SELECT R.copyId
+                                          FROM Reserved R
+                                          WHERE C.copyId = R.copyID
+                                            AND R.isReserved = ?
+
+                                          UNION
+
+                                          SELECT B.copyId
+                                          FROM Borrowed B
+                                          WHERE C.copyId = B.copyId
+                                            AND B.rDatetime IS NOT NULL)
+                          AND EXISTS (SELECT B.copyId
+                                      FROM Borrowed B
+                                      WHERE C.copyId = B.copyId
+
+                                      UNION
+
+                                      SELECT R.copyId
+                                      FROM Reserved R
+                                      WHERE C.copyId = R.copyId)
+                     """
+            values.append(False)
+        if book_id:
+            query += '  AND C.bookId = ?'
+            values.append(book_id)
+        if lib_id:
+            query += '  AND C.libId = ?'
+            values.append(lib_id)
+        if number:
+            query += '  AND C.number = ?'
+            values.append(number)
 
         try:
             c = conn.cursor()
-            c.execute(query)
+            c.execute(query.format(','.join(tables)), tuple(values))
             rows = c.fetchall()
         except sqlite3.Error as e:
             raise e
