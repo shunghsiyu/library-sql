@@ -295,7 +295,7 @@ class BranchResource(LibraryResource):
 marshall_fields['CopySimple'] = {
     'copy_id': fields.Integer,
     'number': fields.Integer,
-    'branch': fields.Nested(marshall_fields['Branch'],
+    'branch': fields.Nested(marshall_fields['BranchUri'],
                             attribute=lambda copy: copy.get_branch()),
     'is_reserved': fields.Boolean(attribute=lambda copy: copy.reserver() is not None),
     'is_borrowed': fields.Boolean(attribute=lambda copy: copy.borrower() is not None),
@@ -427,12 +427,25 @@ class ReaderResource(LibraryResource):
                            self.resource_fields), 201
 
 
+marshall_fields['CopySimple'] = {
+    'copy_id': fields.Integer,
+    'number': fields.Integer,
+    'book': fields.Nested(marshall_fields['BookUri'],
+                          attribute=lambda copy: copy.get_book()),
+    'branch': fields.Nested(marshall_fields['BranchUri'],
+                            attribute=lambda copy: copy.get_branch()),
+    'reserver': fields.Nested(marshall_fields['ReaderUri'], allow_null=True, attribute=lambda copy: copy.reserver()),
+    'borrower': fields.Nested(marshall_fields['ReaderUri'], allow_null=True,  attribute=lambda copy: copy.borrower()),
+    'is_available': fields.Boolean(attribute=lambda copy: not copy.borrower() and not copy.reserver()),
+    'uri': fields.Url('copyresource')
+}
+
 marshall_fields['Copy'] = {
     'copy_id': fields.Integer,
     'number': fields.Integer,
-    'book': fields.Nested(marshall_fields['Book'],
+    'book': fields.Nested(marshall_fields['BookUri'],
                           attribute=lambda copy: copy.get_book()),
-    'branch': fields.Nested(marshall_fields['Branch'],
+    'branch': fields.Nested(marshall_fields['BranchUri'],
                             attribute=lambda copy: copy.get_branch()),
     'is_reserved': fields.Boolean(attribute=lambda copy: copy.reserver() is not None),
     'is_borrowed': fields.Boolean(attribute=lambda copy: copy.borrower() is not None),
@@ -445,7 +458,7 @@ class CopyResource(LibraryResource):
     model = Copies
     envelope = 'copies'
     resource_fields = marshall_fields['Copy']
-    uri_fields = marshall_fields['CopyUri']
+    uri_fields = marshall_fields['CopySimple']
 
     def get(self, copy_id=None):
         return self._get(copy_id)
@@ -462,6 +475,23 @@ class CopyResource(LibraryResource):
                                   args['lib_id'])
             return marshal(copy, self.uri_fields), 201
 
+    def _get_all(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument('book_id', type=int)
+        parser.add_argument('lib_id', type=int)
+        parser.add_argument('number', type=int)
+        parser.add_argument('availability', type=str)
+        args = parser.parse_args(strict=True)
+        available = None
+        if 'availability' in args:
+            if args['availability'] == 'available':
+                available = True
+            elif args['availability'] == 'unavailable':
+                available = False
+        copies = self.model.get_all(get_db(), args['book_id'],
+                                    args['lib_id'], args['number'],
+                                    available)
+        return copies
 
 marshall_fields['Borrow'] = {
     'borrow_id': fields.Integer,
