@@ -80,8 +80,7 @@ CREATE INDEX "idx_wrote__bookid" ON "Wrote" ("bookId");
 
 CREATE VIEW "AverageFine" AS
   SELECT R.readerId, AVG(B.fine)
-  FROM Reader R, Borrowed B
-  WHERE R.readerId = B.readerId
+  FROM Reader R LEFT OUTER JOIN Borrowed B ON R.readerId = B.readerId
   GROUP BY R.readerId;
 
 CREATE VIEW "MostBorrowed" AS
