@@ -3,6 +3,7 @@
 from __future__ import print_function
 from datetime import datetime
 from decimal import Decimal
+from __builtin__ import tuple
 import os
 import sqlite3
 
@@ -153,9 +154,10 @@ class Books(Table):
     def get_all(cls, conn, book_id=None, title=None, publisher_name=None, publisher_id=None):
         query = """
                 SELECT *
-                FROM Book B, Publisher P
-                  WHERE B.publisherId = P.publisherId
+                FROM {}
+                  WHERE B.bookId IS NOT NULL
                 """
+        tables = ['Book B']
         values = []
 
         if book_id:
@@ -165,6 +167,8 @@ class Books(Table):
             query+= ' AND title LIKE ?'
             values.append('%'+title+'%')
         if publisher_name:
+            tables.append('Publisher P')
+            query+= ' AND B.publisherId = P.publisherId'
             query+= ' AND P.name LIKE ?'
             values.append('%'+publisher_name+'%')
         if publisher_id:
@@ -173,7 +177,7 @@ class Books(Table):
 
         try:
             c = conn.cursor()
-            c.execute(query, tuple(values))
+            c.execute(query.format(','.join(tables)), tuple(values))
             rows = c.fetchall()
         except sqlite3.Error as e:
             raise e
