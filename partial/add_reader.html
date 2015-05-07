@@ -3,13 +3,13 @@
 <div>
     <h1>Add Reader</h1>
 
-    <form class="form-horizontal">
+    <form class="form-horizontal" name="addReaderForm">
         <div class="form-group">
             <label for="inputReaderName" class="col-sm-2 control-label">
                 Reader Name
             </label>
             <div class="col-sm-10">
-                <input id="inputReaderName" type="text" class="form-control" ng-model="readerToAdd.name">
+                <input id="inputReaderName" type="text" class="form-control" ng-model="readerToAdd.name" required>
             </div>
         </div>
 
@@ -18,7 +18,7 @@
                 Reader Phone
             </label>
             <div class="col-sm-10">
-                <input id="inputReaderPhone" text="text" class="form-control" ng-model="readerToAdd.phone">
+                <input id="inputReaderPhone" text="text" class="form-control" ng-model="readerToAdd.phone" required>
             </div>
         </div>
 
@@ -27,7 +27,7 @@
                 Reader Address
             </label>
             <div class="col-sm-10">
-                <input id="inputReaderAddress" text="text" class="form-control" ng-model="readerToAdd.address">
+                <input id="inputReaderAddress" text="text" class="form-control" ng-model="readerToAdd.address" required>
             </div>
         </div>
 

@@ -27,6 +27,9 @@ libraryAdminApp.controller('libraryInfoCtrl', function($scope, averageFines) {
     $scope.averageFines = averageFines.results;
 }).controller('addReaderCtrl', function($scope, readerResource) {
     $scope.add = function() {
+        if($scope.addReaderForm.$invalid) {
+            return;
+        }
         readerResource.add($scope.readerToAdd);
     }
 }).controller('branchInfoCtrl', function($scope, branchesData, branchResource) {
