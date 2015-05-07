@@ -209,6 +209,8 @@ marshall_fields['ReaderUri'] = {
 
 marshall_fields['CopyUri'] = {
     'copy_id': fields.Integer,
+    'book_id': fields.Integer,
+    'lib_id': fields.Integer,
     'number': fields.Integer,
     'uri': fields.Url('copyresource')
 }
@@ -447,6 +449,18 @@ class CopyResource(LibraryResource):
 
     def get(self, copy_id=None):
         return self._get(copy_id)
+
+    def post(self, copy_id=None):
+        if copy_id is not None:
+            abort(405)
+        parser = reqparse.RequestParser()
+        parser.add_argument('book_id', type=int, required=True)
+        parser.add_argument('lib_id', type=int, required=True)
+        args = parser.parse_args(strict=True)
+        with app.app_context():
+            copy = self.model.add(get_db(), args['book_id'],
+                                  args['lib_id'])
+            return marshal(copy, self.uri_fields), 201
 
 
 marshall_fields['Borrow'] = {
