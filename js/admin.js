@@ -10,6 +10,17 @@ libraryAdminApp.factory('averageFineResource', function($resource) {
     return $resource('/api/readers/', {}, {
         'add': {method: 'POST'}
     });
+}).factory('branchesResource', function($resource) {
+    return $resource('/api/branches/', {}, {
+        'get': {method: 'GET'}
+    });
+}).factory('branchResource', function($resource) {
+    return function(branchId) {
+        return $resource('/api/branches/:branch_id',
+            {branch_id: branchId}, {
+                'get': {method: 'GET'}
+            }, {stripTrailingSlashes: true});
+    };
 });
 
 libraryAdminApp.controller('libraryInfoCtrl', function($scope, averageFines) {
@@ -17,6 +28,11 @@ libraryAdminApp.controller('libraryInfoCtrl', function($scope, averageFines) {
 }).controller('addReaderCtrl', function($scope, readerResource) {
     $scope.add = function() {
         readerResource.add($scope.readerToAdd);
+    }
+}).controller('branchInfoCtrl', function($scope, branchesData, branchResource) {
+    $scope.branches = branchesData.branches;
+    $scope.load = function(branch) {
+        $scope.branch = branchResource(branch.lib_id).get();
     }
 });
 
@@ -37,7 +53,13 @@ libraryAdminApp.config(['$resourceProvider', function($resourceProvider) {
         }
     }).state('branches', {
         url: '/branches',
-        templateUrl: '/partial/branches.html'
+        templateUrl: '/partial/branches.html',
+        controller: 'branchInfoCtrl',
+        resolve: {
+            branchesData: function(branchesResource) {
+                return branchesResource.get().$promise;
+            }
+        }
     }).state('addReader', {
         url: '/addReader',
         templateUrl: '/partial/add_reader.html',
