@@ -2,4 +2,72 @@
 
 <div>
     <h1>Branches</h1>
+
+    <div class="row">
+        <div class="col-sm-2">
+            <span>Branch</span>
+        </div>
+        <div class="col-sm-10">
+            <ui-select on-select="load($item)" ng-model="$parent.selected">
+                <ui-select-match>
+                    {{ selected.name }}
+                </ui-select-match>
+                <ui-select-choices repeat="branch in branches">
+                    <span>{{ branch.name }}</span>
+                </ui-select-choices>
+            </ui-select>
+        </div>
+    </div>
+
+    <br>
+
+    <div class="panel panel-default" ng-show="branch">
+        <div class="panel-heading">
+            <div class="panel-title">
+                <h3 class="panel-title">Most Borrowed Books</h3>
+            </div>
+        </div>
+        <div class="panel-body">
+            <table class="table table-hover">
+                <tr>
+                    <th>Book ID</th>
+                    <th>Book Title</th>
+                    <th>Time Borrowed</th>
+                </tr>
+                <tr ng-repeat="result in branch.most_borrowed">
+                    <td>{{ result.book.book_id }}</td>
+                    <td>{{ result.book.title }}</td>
+                    <td>{{ result.times }}</td>
+                </tr>
+                <tr ng-hide="branch.most_borrowed[0]">
+                    <td colspan="3"><h4>No book were borrowed from this branch yet</h4></td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <div class="panel panel-default" ng-show="branch">
+        <div class="panel-heading">
+            <div class="panel-title">
+                <h3 class="panel-title">Frequent Borrowers</h3>
+            </div>
+        </div>
+        <div class="panel-body">
+            <table class="table table-hover">
+                <tr>
+                    <th>Reader ID</th>
+                    <th>Reader Name</th>
+                    <th>Number of Borrows</th>
+                </tr>
+                <tr ng-repeat="result in branch.frequent_borrower">
+                    <td>{{ result.reader.reader_id }}</td>
+                    <td>{{ result.reader.name }}</td>
+                    <td>{{ result.times }}</td>
+                </tr>
+                <tr ng-hide="branch.frequent_borrower[0]">
+                    <td colspan="3"><h4>No reader borrowed from this branch yet</h4></td>
+                </tr>
+            </table>
+        </div>
+    </div>
 </div>
