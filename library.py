@@ -293,9 +293,9 @@ class Readers(Table):
         except sqlite3.Error:
             raise
 
-        result = [dict(reader=Readers.get(conn, row[0]), fine=row[1])
+        result = [dict(reader=Readers.get(conn, row[0]), fine=Decimal('0') if row[1] is None else row[1])
                   for row in rows]
-
+        
         return result
 
 
