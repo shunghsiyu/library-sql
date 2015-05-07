@@ -98,13 +98,15 @@ def reader_id_same(func):
     @wraps(func)
     def wrap(*args, **kwargs):
         reader_id = kwargs.get('reader_id', None)
-        if reader_id is not None:
-            if 'admin' in session:
-                pass
-            elif 'reader_id' in session and int(session['reader_id']) == reader_id:
+        if 'admin' in session:
+            pass
+        elif reader_id is not None:
+            if 'reader_id' in session and int(session['reader_id']) == reader_id:
                 pass
             else:
                 abort(403)
+        else:
+            abort(403)
         return func(*args, **kwargs)
     return wrap
 
@@ -128,6 +130,18 @@ def admin_login_required_json(func):
             return abort(401)
     return wrap
 
+def admin_or_reader_login_required_json(func):
+    @wraps(func)
+    def wrap(*args, **kwargs):
+        if 'admin' in session:
+            pass
+        elif 'reader_id' in session:
+            pass
+        else:
+            abort(403)
+        return func(*args, **kwargs)
+    return wrap
+
 
 def get_db():
     db = getattr(g, '_database', None)
@@ -144,7 +158,7 @@ def close_connection(exception):
 
 
 class LibraryResource(Resource):
-    method_decorators = [reader_login_required_json]
+    method_decorators = [admin_or_reader_login_required_json]
     model = None
     envelope = None
     resource_fields = None
