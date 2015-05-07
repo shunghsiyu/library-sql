@@ -652,9 +652,7 @@ def reader(path=None):
 @nocache
 def login_admin():
     if request.method == 'POST':
-        print(request.form)
         if 'username' in request.form and 'password' in request.form:
-            print(request.form['username'])
             if request.form['username'] == 'admin' and request.form['password'] == 'adminadmin':
                 session['admin'] = True
                 return redirect(url_for('admin'))
