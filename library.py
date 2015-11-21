@@ -1,15 +1,26 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from __future__ import print_function
+from contextlib import contextmanager
 from datetime import datetime
 from decimal import Decimal
 from __builtin__ import tuple
 import os
-import sqlite3
+import mysql.connector as mariadb
 
 __author__ = 'shunghsiyu'
 date_format = '%Y-%m-%d'
 datetime_format = '%Y-%m-%d %H:%M:%S.%f'
+
+
+@contextmanager
+def commit_and_close(conn):
+    try:
+        c = conn.cursor()
+        yield c
+    finally:
+        conn.commit()
+        c.close()
 
 
 class Table(object):
@@ -21,15 +32,14 @@ class Authors(Table):
     def add(cls, conn, name):
         insert = """
                  INSERT INTO Author (name)
-                 VALUES (?)
+                 VALUES (%s)
                  """
         values = (name,)
         try:
-            with conn:
-                c = conn.cursor()
+            with commit_and_close(conn) as c:
                 c.execute(insert, values)
                 author_id = c.lastrowid
-        except sqlite3.Error:
+        except mariadb.Error:
             raise
         
         return Author(conn, author_id, name)
@@ -39,7 +49,7 @@ class Authors(Table):
         query = """
                 SELECT *
                 FROM Author
-                WHERE authorId = ?
+                WHERE authorId = %s
                 """
         values = (author_id,)
 
@@ -47,7 +57,7 @@ class Authors(Table):
             c = conn.cursor()
             c.execute(query, values)
             row = c.fetchone()
-        except sqlite3.Error as e:
+        except mariadb.Error as e:
             raise e
 
         author = None
@@ -62,7 +72,7 @@ class Authors(Table):
                 SELECT A.authorId, A.name
                 FROM Author A, Wrote W
                 WHERE A.authorId = W.authorId
-                  AND W.bookId = ?
+                  AND W.bookId = %s
                 """
         values = (book_id,)
 
@@ -70,7 +80,7 @@ class Authors(Table):
             c = conn.cursor()
             c.execute(query, values)
             rows = c.fetchall()
-        except sqlite3.Error as e:
+        except mariadb.Error as e:
             raise e
 
         authors = [Author(conn, row[0], row[1]) for row in rows]
@@ -88,7 +98,7 @@ class Authors(Table):
             c = conn.cursor()
             c.execute(query)
             rows = c.fetchall()
-        except sqlite3.Error as e:
+        except mariadb.Error as e:
             raise e
 
         authors = [Author(conn, row[0], row[1]) for row in rows]
@@ -111,18 +121,17 @@ class Books(Table):
         insert = """
                  INSERT INTO
                   Book (title, ISBN, publisherId, publishdate)
-                 VALUES (?, ?, ?, ?)
+                 VALUES (%s, %s, %s, %s)
                  """
         assert isinstance(publish_date, datetime)
         values = (title, isbn, publisher_id,
                   publish_date.strftime(date_format))
 
         try:
-            with conn:
-                c = conn.cursor()
+            with commit_and_close(conn) as c:
                 c.execute(insert, values)
                 book_id = c.lastrowid
-        except sqlite3.Error:
+        except mariadb.Error:
             raise AddBookError
 
         return Book(conn, book_id, title, isbn, publisher_id,
@@ -133,7 +142,7 @@ class Books(Table):
         query = """
                 SELECT *
                 FROM Book
-                WHERE bookId = ?
+                WHERE bookId = %s
                 """
         values = (book_id,)
 
@@ -141,7 +150,7 @@ class Books(Table):
             c = conn.cursor()
             c.execute(query, values)
             row = c.fetchone()
-        except sqlite3.Error:
+        except mariadb.Error:
             raise
 
         book = None
@@ -161,25 +170,25 @@ class Books(Table):
         values = []
 
         if book_id:
-            query+= ' AND bookId = ?'
+            query+= ' AND bookId = %s'
             values.append(book_id)
         if title:
-            query+= ' AND title LIKE ?'
+            query+= ' AND title LIKE %s'
             values.append('%'+title+'%')
         if publisher_name:
             tables.append('Publisher P')
             query+= ' AND B.publisherId = P.publisherId'
-            query+= ' AND P.name LIKE ?'
+            query+= ' AND P.name LIKE %s'
             values.append('%'+publisher_name+'%')
         if publisher_id:
-            query+= ' AND B.publisherId = ?'
+            query+= ' AND B.publisherId = %s'
             values.append(publisher_id)
 
         try:
             c = conn.cursor()
             c.execute(query.format(','.join(tables)), tuple(values))
             rows = c.fetchall()
-        except sqlite3.Error as e:
+        except mariadb.Error as e:
             raise e
 
         books = [Book.create_from_books(conn, row) for row in rows]
@@ -223,16 +232,15 @@ class Readers(Table):
     def add(cls, conn, name, address, phone):
         insert = """
                  INSERT INTO Reader (name, address, phone)
-                 VALUES (?, ?, ?)
+                 VALUES (%s, %s, %s)
                  """
         values = (name, address, phone)
 
         try:
-            with conn:
-                c = conn.cursor()
+            with commit_and_close(conn) as c:
                 c.execute(insert, values)
                 reader_id = c.lastrowid
-        except sqlite3.Error as e:
+        except mariadb.Error as e:
             raise e
 
         return Reader(conn, reader_id, name, address, phone)
@@ -246,14 +254,14 @@ class Readers(Table):
         query = """
                 SELECT *
                 FROM Reader
-                WHERE readerID = ?
+                WHERE readerID = %s
                 """
         values = (reader_id,)
         try:
             c = conn.cursor()
             c.execute(query, values)
             row = c.fetchone()
-        except sqlite3.Error as e:
+        except mariadb.Error as e:
             raise e
 
         if row:
@@ -271,7 +279,7 @@ class Readers(Table):
             c = conn.cursor()
             c.execute(query)
             rows = c.fetchall()
-        except sqlite3.Error as e:
+        except mariadb.Error as e:
             raise e
 
         readers = [Reader.create_from_readers(conn, row)
@@ -290,7 +298,7 @@ class Readers(Table):
             c = conn.cursor()
             c.execute(query)
             rows = c.fetchall()
-        except sqlite3.Error:
+        except mariadb.Error:
             raise
 
         result = [dict(reader=Readers.get(conn, row[0]), fine=Decimal('0') if row[1] is None else row[1])
@@ -337,15 +345,14 @@ class Copies(Table):
         number = cls.max_number(conn, book_id, lib_id) + 1
         insert = """
                  INSERT INTO Copy (number, bookId, libId)
-                 VALUES (?, ?, ?)
+                 VALUES (%s, %s, %s)
                  """
         values = (number, book_id, lib_id)
 
         try:
-            with conn:
-                c = conn.cursor()
+            with commit_and_close(conn) as c:
                 c.execute(insert, values)
-        except sqlite3.Error as e:
+        except mariadb.Error as e:
             raise e
 
         copy_id = c.lastrowid
@@ -357,8 +364,8 @@ class Copies(Table):
         query = """
                 SELECT MAX(number)
                 FROM Copy
-                WHERE bookId = ?
-                  AND libId = ?
+                WHERE bookId = %s
+                  AND libId = %s
                 """
         values = (book_id, lib_id)
 
@@ -366,7 +373,7 @@ class Copies(Table):
             c = conn.cursor()
             c.execute(query, values)
             row = c.fetchone()
-        except sqlite3.Error as e:
+        except mariadb.Error as e:
             raise e
 
         if row[0]:
@@ -381,7 +388,7 @@ class Copies(Table):
         query = """
                 SELECT *
                 FROM Copy
-                WHERE copyId = ?
+                WHERE copyId = %s
                 """
         values = (copy_id,)
 
@@ -389,7 +396,7 @@ class Copies(Table):
             c = conn.cursor()
             c.execute(query, values)
             row = c.fetchone()
-        except sqlite3.Error as e:
+        except mariadb.Error as e:
             raise e
 
         copy = None
@@ -403,7 +410,7 @@ class Copies(Table):
         query = """
                 SELECT *
                 FROM Copy
-                  WHERE bookId = ?
+                  WHERE bookId = %s
                 """
         values = (book_id,)
 
@@ -411,7 +418,7 @@ class Copies(Table):
             c = conn.cursor()
             c.execute(query, values)
             rows = c.fetchall()
-        except sqlite3.Error as e:
+        except mariadb.Error as e:
             raise e
 
         copies = [Copy.create_from_copies(conn, row)
@@ -433,7 +440,7 @@ class Copies(Table):
             query += """  AND NOT EXISTS (SELECT R.copyId
                                          FROM Reserved R
                                          WHERE C.copyId = R.copyID
-                                           AND R.isReserved = ?
+                                           AND R.isReserved = %s
 
                                          UNION
 
@@ -447,7 +454,7 @@ class Copies(Table):
             query += """  AND NOT EXISTS (SELECT R.copyId
                                           FROM Reserved R
                                           WHERE C.copyId = R.copyID
-                                            AND R.isReserved = ?
+                                            AND R.isReserved = %s
 
                                           UNION
 
@@ -467,20 +474,20 @@ class Copies(Table):
                      """
             values.append(False)
         if book_id:
-            query += '  AND C.bookId = ?'
+            query += '  AND C.bookId = %s'
             values.append(book_id)
         if lib_id:
-            query += '  AND C.libId = ?'
+            query += '  AND C.libId = %s'
             values.append(lib_id)
         if number:
-            query += '  AND C.number = ?'
+            query += '  AND C.number = %s'
             values.append(number)
 
         try:
             c = conn.cursor()
             c.execute(query.format(','.join(tables)), tuple(values))
             rows = c.fetchall()
-        except sqlite3.Error as e:
+        except mariadb.Error as e:
             raise e
 
         copies = [Copy.create_from_copies(conn, row)
@@ -527,12 +534,12 @@ class Borrows(Table):
         insert = """
                  INSERT INTO
                    Borrowed (copyId, readerId, bDatetime, rDatetime)
-                 VALUES (?, ?, ?, NULL);
+                 VALUES (%s, %s, %s, NULL);
                  """
 
         now = datetime.utcnow()
 
-        with conn:
+        with commit_and_close(conn) as c:
             reserve_by = copy.reserver()
             if copy.borrower():
                 raise CopyNotAvailableError
@@ -543,12 +550,11 @@ class Borrows(Table):
 
             values = (copy.copy_id, reader.reader_id, now)
             try:
-                c = conn.cursor()
                 c.execute(insert, values)
                 borrow_id = c.lastrowid
                 if reserve_by and reserve_by.reader_id == reader.reader_id:
                     reader.cancel(copy)
-            except sqlite3.Error as e:
+            except mariadb.Error as e:
                 raise e
             return Borrow(conn, borrow_id, copy.copy_id, reader.reader_id, now)
 
@@ -557,7 +563,7 @@ class Borrows(Table):
         query = """
                 SELECT *
                 FROM Borrowed
-                WHERE borrowId = ?
+                WHERE borrowId = %s
                 """
         values = (borrow_id,)
 
@@ -565,7 +571,7 @@ class Borrows(Table):
             c = conn.cursor()
             c.execute(query, values)
             row = c.fetchone()
-        except sqlite3.Error as e:
+        except mariadb.Error as e:
             raise e
 
         borrow = None
@@ -585,7 +591,7 @@ class Borrows(Table):
             c = conn.cursor()
             c.execute(query)
             rows = c.fetchall()
-        except sqlite3.Error as e:
+        except mariadb.Error as e:
             raise e
 
         borrows = [Borrow.create_from_borrowed(conn, row)
@@ -598,7 +604,7 @@ class Borrows(Table):
         query = """
                 SELECT *
                 FROM Borrowed
-                WHERE readerID = ?
+                WHERE readerID = %s
                 """
         values = (reader.reader_id,)
 
@@ -606,7 +612,7 @@ class Borrows(Table):
             c = conn.cursor()
             c.execute(query, values)
             rows = c.fetchall()
-        except sqlite3.Error as e:
+        except mariadb.Error as e:
             raise e
 
         all_borrows = [Borrow.create_from_borrowed(conn, row)
@@ -619,7 +625,7 @@ class Borrows(Table):
         query = """
                 SELECT COUNT(*)
                 FROM Borrowed
-                WHERE readerID = ?
+                WHERE readerID = %s
                   AND rDatetime IS NULL
                 """
         values = (reader.reader_id,)
@@ -628,7 +634,7 @@ class Borrows(Table):
             c = conn.cursor()
             c.execute(query, values)
             row = c.fetchone()
-        except sqlite3.Error:
+        except mariadb.Error:
             raise
 
         return row[0]
@@ -640,8 +646,8 @@ class Borrows(Table):
                 SELECT readerID
                 FROM Copy C, Borrowed B
                 WHERE B.copyId = C.copyId
-                  AND C.copyId = ?
-                  AND bookId = ?
+                  AND C.copyId = %s
+                  AND bookId = %s
                   AND rDatetime IS NULL
                   AND fine IS NULL
                 """
@@ -650,7 +656,7 @@ class Borrows(Table):
         try:
             c.execute(query, values)
             row = c.fetchone()
-        except sqlite3.Error as e:
+        except mariadb.Error as e:
             raise e
 
         borrower = None
@@ -664,23 +670,22 @@ class Borrows(Table):
         query = """
                 SELECT *
                 FROM Borrowed
-                WHERE copyId = ?
-                  AND readerID = ?
+                WHERE copyId = %s
+                  AND readerID = %s
                   AND rDatetime IS NULL
                   AND fine IS NULL
                 """
 
         update = """
                  UPDATE Borrowed
-                 SET rDatetime = ?, fine = ?
-                 WHERE borrowId = ?
+                 SET rDatetime = %s, fine = %s
+                 WHERE borrowId = %s
                  """
 
         now = datetime.utcnow()
 
         try:
-            with conn:
-                c = conn.cursor()
+            with commit_and_close(conn) as c:
                 q_values = (copy.copy_id, reader.reader_id)
                 c.execute(query, q_values)
                 row = c.fetchone()
@@ -690,7 +695,7 @@ class Borrows(Table):
                 u_values = (now, cls._calculate_fine(borrow, now),
                             borrow.borrow_id)
                 c.execute(update, u_values)
-        except sqlite3.Error as e:
+        except mariadb.Error as e:
             raise e
 
         return Borrows.get(conn, row[0])
@@ -749,16 +754,15 @@ class Reserves(Table):
         insert = """
                 INSERT INTO
                   Reserved (copyId, readerId, rvDatetime, isReserved)
-                VALUES (?, ?, ?, ?);
+                VALUES (%s, %s, %s, %s);
                 """
         now = datetime.utcnow()
         values = (copy.copy_id, reader.reader_id, now, True)
         try:
-            with conn:
-                c = conn.cursor()
+            with commit_and_close(conn) as c:
                 c.execute(insert, values)
                 reserve_id = c.lastrowid
-        except sqlite3.Error as e:
+        except mariadb.Error as e:
             raise e
 
         return Reserve(conn, reserve_id, copy.copy_id, reader.reader_id,
@@ -769,7 +773,7 @@ class Reserves(Table):
         query = """
                 SELECT *
                 FROM Reserved
-                WHERE reserveId = ?
+                WHERE reserveId = %s
                 """
         values = (reserve_id,)
 
@@ -777,7 +781,7 @@ class Reserves(Table):
             c = conn.cursor()
             c.execute(query, values)
             row = c.fetchone()
-        except sqlite3.Error:
+        except mariadb.Error:
             raise
 
         reserve = None
@@ -797,7 +801,7 @@ class Reserves(Table):
             c = conn.cursor()
             c.execute(query)
             rows = c.fetchall()
-        except sqlite3.Error as e:
+        except mariadb.Error as e:
             raise e
 
         reserves = [Reserve.create_from_reserved(conn, row)
@@ -810,7 +814,7 @@ class Reserves(Table):
         query = """
                 SELECT *
                 FROM Reserved
-                WHERE readerID = ?
+                WHERE readerID = %s
                 """
         values = (reader.reader_id,)
 
@@ -818,7 +822,7 @@ class Reserves(Table):
             c = conn.cursor()
             c.execute(query, values)
             rows = c.fetchall()
-        except sqlite3.Error as e:
+        except mariadb.Error as e:
             raise e
 
         all_reserves = [Reserve.create_from_reserved(conn, row)
@@ -831,8 +835,8 @@ class Reserves(Table):
         query = """
                 SELECT COUNT(*)
                 FROM Reserved
-                WHERE readerID = ?
-                  AND isReserved = ?
+                WHERE readerID = %s
+                  AND isReserved = %s
                 """
         values = (reader.reader_id, True)
 
@@ -840,7 +844,7 @@ class Reserves(Table):
             c = conn.cursor()
             c.execute(query, values)
             row = c.fetchone()
-        except sqlite3.Error as e:
+        except mariadb.Error as e:
             raise e
 
         return row[0]
@@ -852,15 +856,15 @@ class Reserves(Table):
                 SELECT readerID
                 FROM Copy C, Reserved R
                 WHERE R.copyId = C.copyId
-                  AND C.copyId = ?
-                  AND bookId = ?
-                  AND isReserved = ?
+                  AND C.copyId = %s
+                  AND bookId = %s
+                  AND isReserved = %s
                 """
         values = (copy.copy_id, copy.book_id, True)
         try:
             c.execute(query, values)
             row = c.fetchone()
-        except sqlite3.Error as e:
+        except mariadb.Error as e:
             raise e
 
         reserver = None
@@ -874,20 +878,19 @@ class Reserves(Table):
         query = """
                 SELECT *
                 FROM Reserved
-                WHERE copyId = ?
-                  AND readerID = ?
-                  AND isReserved = ?
+                WHERE copyId = %s
+                  AND readerID = %s
+                  AND isReserved = %s
                 """
 
         update = """
                  UPDATE Reserved
-                 SET isReserved = ?
-                 WHERE reserveId = ?
+                 SET isReserved = %s
+                 WHERE reserveId = %s
                  """
 
         try:
-            with conn:
-                c = conn.cursor()
+            with commit_and_close(conn) as c:
                 q_values = (copy.copy_id, reader.reader_id, True)
                 c.execute(query, q_values)
                 row = c.fetchone()
@@ -896,7 +899,7 @@ class Reserves(Table):
                 reserve = Reserves.get(conn, row[0])
                 u_values = (False, reserve.reserve_id)
                 c.execute(update, u_values)
-        except sqlite3.Error as e:
+        except mariadb.Error as e:
             raise e
 
         return Reserves.get(conn, row[0])
@@ -937,16 +940,15 @@ class Publishers(Table):
     def add(cls, conn, name, address):
         insert = """
                  INSERT INTO Publisher (name, address)
-                 VALUES (?, ?)
+                 VALUES (%s, %s)
                  """
         values = (name, address)
 
         try:
-            with conn:
-                c = conn.cursor()
+            with commit_and_close(conn) as c:
                 c.execute(insert, values)
                 publisher_id = c.lastrowid
-        except sqlite3.Error as e:
+        except mariadb.Error as e:
             raise e
 
         return Publisher(conn, publisher_id, name, address)
@@ -956,7 +958,7 @@ class Publishers(Table):
         query = """
                 SELECT *
                 FROM Publisher
-                WHERE publisherId = ?
+                WHERE publisherId = %s
                 """
         values = (publisher_id,)
 
@@ -964,7 +966,7 @@ class Publishers(Table):
             c = conn.cursor()
             c.execute(query, values)
             row = c.fetchone()
-        except sqlite3.Error as e:
+        except mariadb.Error as e:
             raise e
 
         publisher = None
@@ -984,7 +986,7 @@ class Publishers(Table):
             c = conn.cursor()
             c.execute(query)
             rows = c.fetchall()
-        except sqlite3.Error as e:
+        except mariadb.Error as e:
             raise e
 
         publishers = [Publisher(conn, row[0], row[1], row[2])
@@ -1015,16 +1017,15 @@ class Branches(Table):
     def add(cls, conn, branch_name, location):
         insert = """
                  INSERT INTO Branch (branch_name, location)
-                 VALUES (?, ?)
+                 VALUES (%s, %s)
                  """
         values = (branch_name, location)
 
         try:
-            with conn:
-                c = conn.cursor()
+            with commit_and_close(conn) as c:
                 c.execute(insert, values)
                 lib_id = c.lastrowid
-        except sqlite3.Error:
+        except mariadb.Error:
             raise
 
         return Branch(conn, lib_id, branch_name, location)
@@ -1034,7 +1035,7 @@ class Branches(Table):
         query = """
                 SELECT *
                 FROM Branch
-                WHERE libId = ?
+                WHERE libId = %s
                 """
         values = (lib_id,)
 
@@ -1042,7 +1043,7 @@ class Branches(Table):
             c = conn.cursor()
             c.execute(query, values)
             row = c.fetchone()
-        except sqlite3.Error as e:
+        except mariadb.Error as e:
             raise e
 
         branch = None
@@ -1062,7 +1063,7 @@ class Branches(Table):
             c = conn.cursor()
             c.execute(query)
             rows = c.fetchall()
-        except sqlite3.Error as e:
+        except mariadb.Error as e:
             raise e
 
         branches = [Branch(conn, row[0], row[1], row[2])
@@ -1083,19 +1084,19 @@ class Branch(object):
         query = """
                 SELECT readerId, Times
                 FROM FrequentBorrower
-                WHERE libId = ?
+                WHERE libId = %s
                 """
         values = [self.lib_id]
 
         if limit:
-            query += ' LIMIT ?'
+            query += ' LIMIT %s'
             values.append(limit)
 
         try:
             c = self.conn.cursor()
             c.execute(query, tuple(values))
             rows = c.fetchall()
-        except sqlite3.Error:
+        except mariadb.Error:
             raise
 
         results = [dict(reader=Readers.get(self.conn, row[0]),
@@ -1108,19 +1109,19 @@ class Branch(object):
         query = """
                 SELECT bookId, Times
                 FROM MostBorrowed
-                  WHERE libId = ?
+                  WHERE libId = %s
                 """
         values = [self.lib_id]
 
         if limit is not None:
-            query += ' LIMIT ?'
+            query += ' LIMIT %s'
             values.append(limit)
 
         try:
             c = self.conn.cursor()
             c.execute(query, tuple(values))
             rows = c.fetchall()
-        except sqlite3.Error:
+        except mariadb.Error:
             raise
 
         result = [dict(book=Books.get(self.conn, row[0]), times=row[1])
@@ -1152,19 +1153,13 @@ class OverReserveError(Exception):
 def create_tables(conn, create_script):
     c = conn.cursor()
     script = open(create_script).read()
-    c.executescript(script)
+    for _ in c.execute(script, multi=True):
+        pass
     conn.commit()
 
 
-def start(db_path='library.db', create_script='library.ddl'):
-    sqlite3.register_adapter(bool, int)
-    sqlite3.register_converter("BOOLEAN", lambda v: v != '0')
-    if os.path.isfile(db_path):
-        conn = sqlite3.connect(db_path)
-    else:
-        conn = sqlite3.connect(db_path)
-        create_tables(conn, create_script)
-    conn.execute('PRAGMA FOREIGN_KEYS = 1;')
+def start(db_path='', db_username='flask', db_passwd='python', db_dbname='librarydb', create_script='library.ddl'):
+    conn = mariadb.connect(host=db_path, user=db_username, passwd=db_passwd, db=db_dbname)
     return conn
 
 

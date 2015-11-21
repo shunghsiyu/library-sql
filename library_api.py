@@ -146,10 +146,11 @@ def admin_or_reader_login_required_json(func):
 def get_db():
     db = getattr(g, '_database', None)
     if db is None:
-        db = g._database = start(app.config['DB_PATH'])
+        db = start(app.config['DB_PATH'])
+        g._database = db
     return db
 
-
+    
 @app.teardown_appcontext
 def close_connection(exception):
     db = getattr(g, '_database', None)
@@ -733,7 +734,7 @@ def index():
 app.secret_key = 'thisisaSECRET'
 
 
-def run(db_path='library.db', debug=False):
+def run(db_path='192.168.56.100', debug=False):
     app.config['DB_PATH'] = db_path
     if debug:
         app.run(debug=True)
