@@ -1,89 +1,91 @@
-PRAGMA FOREIGN_KEYS = 1;
+SET FOREIGN_KEY_CHECKS = 1;
 
-CREATE TABLE "Author" (
-  "authorId" INTEGER PRIMARY KEY AUTOINCREMENT,
-  "name" TEXT NOT NULL
+CREATE TABLE IF NOT EXISTS `Author` (
+  `authorId` INTEGER PRIMARY KEY AUTO_INCREMENT,
+  `name` VARCHAR(255) NOT NULL
 );
 
-CREATE TABLE "Branch" (
-  "libId" INTEGER PRIMARY KEY AUTOINCREMENT,
-  "branch_name" TEXT UNIQUE NOT NULL,
-  "location" TEXT UNIQUE NOT NULL
+CREATE TABLE IF NOT EXISTS `Branch` (
+  `libId` INTEGER PRIMARY KEY AUTO_INCREMENT,
+  `branch_name` VARCHAR(255) UNIQUE NOT NULL,
+  `location` VARCHAR(255) UNIQUE NOT NULL
 );
 
-CREATE TABLE "Publisher" (
-  "publisherId" INTEGER PRIMARY KEY AUTOINCREMENT,
-  "name" TEXT UNIQUE NOT NULL,
-  "address" TEXT UNIQUE NOT NULL
+CREATE TABLE IF NOT EXISTS `Publisher` (
+  `publisherId` INTEGER PRIMARY KEY AUTO_INCREMENT,
+  `name` VARCHAR(255) UNIQUE NOT NULL,
+  `address` VARCHAR(255) UNIQUE NOT NULL
 );
 
-CREATE TABLE "Book" (
-  "bookId" INTEGER PRIMARY KEY AUTOINCREMENT,
-  "title" TEXT NOT NULL,
-  "ISBN" TEXT UNIQUE NOT NULL,
-  "publisherId" INTEGER NOT NULL REFERENCES "Publisher" ("publisherId"),
-  "publishdate" DATE NOT NULL
+CREATE TABLE IF NOT EXISTS `Book` (
+  `bookId` INTEGER PRIMARY KEY AUTO_INCREMENT,
+  `title` VARCHAR(255) NOT NULL,
+  `ISBN` VARCHAR(255) UNIQUE NOT NULL,
+  `publisherId` INTEGER NOT NULL,
+  `publishDate` DATE NOT NULL
 );
 
-CREATE INDEX "idx_book__publisherid" ON "Book" ("publisherId");
+ALTER TABLE `Book` ADD CONSTRAINT `fk_book__publisherId` FOREIGN KEY (`publisherId`) REFERENCES `Publisher` (`publisherId`);
 
-CREATE TABLE "Copy" (
-  "copyId" INTEGER PRIMARY KEY AUTOINCREMENT,
-  "number" INTEGER NOT NULL,
-  "bookId" INTEGER NOT NULL REFERENCES "Book" ("bookId"),
-  "libId" INTEGER NOT NULL REFERENCES "Branch" ("libId")
+CREATE TABLE IF NOT EXISTS `Copy` (
+  `copyId` INTEGER PRIMARY KEY AUTO_INCREMENT,
+  `number` INTEGER NOT NULL,
+  `bookId` INTEGER NOT NULL,
+  `libId` INTEGER NOT NULL
 );
 
-CREATE INDEX "idx_copy__bookid" ON "Copy" ("bookId");
+ALTER TABLE `Copy` ADD CONSTRAINT `fk_copy__bookId` FOREIGN KEY (`bookId`) REFERENCES `Book` (`bookId`);
 
-CREATE INDEX "idx_copy__libid" ON "Copy" ("libId");
+ALTER TABLE `Copy` ADD CONSTRAINT `fk_copy__libId` FOREIGN KEY (`libId`) REFERENCES `Branch` (`libId`);
 
-CREATE TABLE "Reader" (
-  "readerId" INTEGER PRIMARY KEY AUTOINCREMENT,
-  "name" TEXT NOT NULL,
-  "address" TEXT NOT NULL,
-  "phone" TEXT UNIQUE NOT NULL
+CREATE TABLE IF NOT EXISTS `Reader` (
+  `readerId` INTEGER PRIMARY KEY AUTO_INCREMENT,
+  `name` VARCHAR(255) NOT NULL,
+  `address` VARCHAR(255) NOT NULL,
+  `phone` VARCHAR(255) UNIQUE NOT NULL
 );
 
-CREATE TABLE "Borrowed" (
-  "borrowId" INTEGER PRIMARY KEY AUTOINCREMENT,
-  "copyId" INTEGER NOT NULL REFERENCES "Copy" ("copyId"),
-  "readerId" INTEGER NOT NULL REFERENCES "Reader" ("readerId"),
-  "bDatetime" DATETIME NOT NULL,
-  "rDatetime" DATETIME,
-  "fine" TEXT
+CREATE TABLE IF NOT EXISTS `Borrowed` (
+  `borrowId` INTEGER PRIMARY KEY AUTO_INCREMENT,
+  `copyId` INTEGER NOT NULL,
+  `readerId` INTEGER NOT NULL,
+  `bdatetime` DATETIME NOT NULL,
+  `rdatetime` DATETIME,
+  `fine` DOUBLE
 );
 
-CREATE INDEX "idx_borrowed__copyid" ON "Borrowed" ("copyId");
+ALTER TABLE `Borrowed` ADD CONSTRAINT `fk_borrowed__copyId` FOREIGN KEY (`copyId`) REFERENCES `Copy` (`copyId`);
 
-CREATE INDEX "idx_borrowed__readerid" ON "Borrowed" ("readerId");
+ALTER TABLE `Borrowed` ADD CONSTRAINT `fk_borrowed__readerId` FOREIGN KEY (`readerId`) REFERENCES `Reader` (`readerId`);
 
-CREATE TABLE "Reserved" (
-  "reserveId" INTEGER PRIMARY KEY AUTOINCREMENT,
-  "copyId" INTEGER NOT NULL REFERENCES "Copy" ("copyId"),
-  "readerId" INTEGER NOT NULL REFERENCES "Reader" ("readerId"),
-  "rvDatetime" DATETIME NOT NULL,
-  "isReserved" BOOLEAN NOT NULL
+CREATE TABLE IF NOT EXISTS `Reserved` (
+  `reserveid` INTEGER PRIMARY KEY AUTO_INCREMENT,
+  `copyId` INTEGER NOT NULL,
+  `readerId` INTEGER NOT NULL,
+  `rvdatetime` DATETIME NOT NULL,
+  `isreserved` BOOLEAN NOT NULL
 );
 
-CREATE INDEX "idx_reserved__copyid" ON "Reserved" ("copyId");
+ALTER TABLE `Reserved` ADD CONSTRAINT `fk_reserved__copyId` FOREIGN KEY (`copyId`) REFERENCES `Copy` (`copyId`);
 
-CREATE INDEX "idx_reserved__readerid" ON "Reserved" ("readerId");
+ALTER TABLE `Reserved` ADD CONSTRAINT `fk_reserved__readerId` FOREIGN KEY (`readerId`) REFERENCES `Reader` (`readerId`);
 
-CREATE TABLE "Wrote" (
-  "authorId" INTEGER NOT NULL REFERENCES "Author" ("authorId"),
-  "bookId" INTEGER NOT NULL REFERENCES "Book" ("bookId"),
-  PRIMARY KEY ("authorId", "bookId")
+CREATE TABLE IF NOT EXISTS `Wrote` (
+  `authorId` INTEGER NOT NULL,
+  `bookId` INTEGER NOT NULL,
+  PRIMARY KEY (`authorId`, `bookId`)
 );
 
-CREATE INDEX "idx_wrote__bookid" ON "Wrote" ("bookId");
+ALTER TABLE `Wrote` ADD CONSTRAINT `fk_wrote__authorId` FOREIGN KEY (`authorId`) REFERENCES `Author` (`authorId`);
 
-CREATE VIEW "AverageFine" AS
+ALTER TABLE `Wrote` ADD CONSTRAINT `fk_wrote__bookId` FOREIGN KEY (`bookId`) REFERENCES `Book` (`bookId`);
+
+CREATE VIEW `AverageFine` AS
   SELECT R.readerId, AVG(B.fine)
   FROM Reader R LEFT OUTER JOIN Borrowed B ON R.readerId = B.readerId
   GROUP BY R.readerId;
 
-CREATE VIEW "MostBorrowed" AS
+CREATE VIEW `MostBorrowed` AS
   SELECT C.libId, B.bookId, COUNT(*) AS Times
   FROM Book B, Copy C, Borrowed R
   WHERE R.copyId = C.copyId
@@ -91,7 +93,7 @@ CREATE VIEW "MostBorrowed" AS
   GROUP BY C.libId, B.bookId
   ORDER BY Times DESC;
 
-CREATE VIEW "FrequentBorrower" AS
+CREATE VIEW `FrequentBorrower` AS
   SELECT C.libId, R.readerId, COUNT(*) AS Times
   FROM Borrowed B, Reader R, Copy C
   WHERE B.readerId = R.readerId
